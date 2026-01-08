@@ -1,0 +1,144 @@
+{
+  "type": "recipe",
+  "name": "Classic Chocolate Chip Cookies Recipe",
+  "servings": 24,
+  "equipments": [
+    {
+      "id": "e1",
+      "name": "Stand mixer"
+    },
+    {
+      "id": "e2",
+      "name": "baking sheets"
+    },
+    {
+      "id": "e3",
+      "name": "parchment paper"
+    }
+  ],
+  "ingredients": [
+    {
+      "id": "i1",
+      "name": "all-purpose flour",
+      "preparation": undefined,
+      "quantity": 2.25,
+      "unit": "cups"
+    },
+    {
+      "id": "i2",
+      "name": "baking soda",
+      "preparation": undefined,
+      "quantity": 1,
+      "unit": "teaspoon"
+    },
+    {
+      "id": "i3",
+      "name": "salt",
+      "preparation": undefined,
+      "quantity": 1,
+      "unit": "teaspoon"
+    },
+    {
+      "id": "i4",
+      "name": "butter",
+      "preparation": "softened",
+      "quantity": 1,
+      "unit": "cup"
+    },
+    {
+      "id": "i5",
+      "name": "granulated sugar",
+      "preparation": undefined,
+      "quantity": 0.75,
+      "unit": "cup"
+    },
+    {
+      "id": "i6",
+      "name": "brown sugar",
+      "preparation": "packed",
+      "quantity": 0.75,
+      "unit": "cup"
+    },
+    {
+      "id": "i7",
+      "name": "eggs",
+      "preparation": "large",
+      "quantity": 2,
+      "unit": "count"
+    },
+    {
+      "id": "i8",
+      "name": "vanilla extract",
+      "preparation": undefined,
+      "quantity": 1,
+      "unit": "teaspoon"
+    },
+    {
+      "id": "i9",
+      "name": "chocolate chips",
+      "preparation": undefined,
+      "quantity": 2,
+      "unit": "cups"
+    }
+  ],
+  "instructions": [
+    {
+      "references": [
+        "e2",
+        "e3"
+      ],
+      "description": "Preheat oven to 375°F. Line baking sheets with parchment paper."
+    },
+    {
+      "references": [
+        "i1",
+        "i2",
+        "i3"
+      ],
+      "description": "In a medium bowl, whisk together the flour, baking soda, and salt."
+    },
+    {
+      "references": [
+        "e1",
+        "i4",
+        "i5",
+        "i6"
+      ],
+      "description": "In a stand mixer, cream the butter and both sugars until light and fluffy, about 3 minutes."
+    },
+    {
+      "references": [
+        "i7",
+        "i8"
+      ],
+      "description": "Add the eggs one at a time, beating well after each addition. Mix in the vanilla."
+    },
+    {
+      "references": undefined,
+      "description": "Gradually add the flour mixture, mixing on low speed until just combined."
+    },
+    {
+      "references": [
+        "i9"
+      ],
+      "description": "Fold in the chocolate chips by hand."
+    },
+    {
+      "references": [
+        "e2"
+      ],
+      "description": "Drop rounded tablespoons of dough onto prepared baking sheets, spacing 2 inches apart."
+    },
+    {
+      "references": undefined,
+      "description": "Bake for 9-11 minutes until edges are golden but centers look slightly underdone."
+    },
+    {
+      "references": [
+        "e2"
+      ],
+      "description": "Let cool on baking sheet for 5 minutes before transferring to wire rack."
+    }
+  ]
+}
+```

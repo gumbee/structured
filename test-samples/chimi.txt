@@ -1,0 +1,110 @@
+```json
+[
+  {
+    "type": "recipe",
+    "name": "Classic Chimichurri Sauce",
+    "servings": 6,
+    "equipments": [
+      {
+        "id": "bowl",
+        "name": "Small Bowl"
+      },
+      {
+        "id": "whisk",
+        "name": "Whisk or Fork"
+      }
+    ],
+    "ingredients": [
+      {
+        "id": "parsley",
+        "name": "Fresh Flat-leaf Parsley",
+        "preparation": "finely chopped",
+        "quantity": 1,
+        "unit": "cup"
+      },
+      {
+        "id": "oregano",
+        "name": "Fresh Oregano Leaves",
+        "preparation": "finely chopped",
+        "quantity": 2,
+        "unit": "tbsp"
+      },
+      {
+        "id": "garlic",
+        "name": "Garlic Cloves",
+        "preparation": "minced",
+        "quantity": 3,
+        "unit": "cloves"
+      },
+      {
+        "id": "red_wine_vinegar",
+        "name": "Red Wine Vinegar",
+        "preparation": "",
+        "quantity": 0.25,
+        "unit": "cup"
+      },
+      {
+        "id": "olive_oil",
+        "name": "Extra Virgin Olive Oil",
+        "preparation": "",
+        "quantity": 0.5,
+        "unit": "cup"
+      },
+      {
+        "id": "red_pepper_flakes",
+        "name": "Red Pepper Flakes",
+        "preparation": "",
+        "quantity": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "id": "salt",
+        "name": "Salt",
+        "preparation": "",
+        "quantity": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "id": "black_pepper",
+        "name": "Black Pepper",
+        "preparation": "freshly ground",
+        "quantity": 0.25,
+        "unit": "tsp"
+      }
+    ],
+    "instructions": [
+      {
+        "references": [
+          "parsley",
+          "oregano",
+          "garlic",
+          "red_pepper_flakes"
+        ],
+        "description": "In the small bowl, combine the finely chopped parsley, oregano, minced garlic, and red pepper flakes."
+      },
+      {
+        "references": [
+          "red_wine_vinegar"
+        ],
+        "description": "Pour in the red wine vinegar and mix well with the herbs and garlic."
+      },
+      {
+        "references": [
+          "olive_oil",
+          "salt",
+          "black_pepper"
+        ],
+        "description": "Slowly whisk in the olive oil until the sauce emulsifies slightly. Season with salt and black pepper to taste."
+      },
+      {
+        "references": [],
+        "description": "For the best flavor, let the chimichurri sit at room temperature for at least 30 minutes before serving, allowing the flavors to meld. Stir again before drizzling over grilled steak, chicken, or vegetables."
+      }
+    ]
+  },
+  {
+    "type": "tldr",
+    "content": "This is a classic, fresh, vibrant Argentinean sauce made by finely chopping parsley, oregano, garlic, and mixing them with red wine vinegar, olive oil, and spices."
+  }
+]
+```

@@ -1,0 +1,72 @@
+{
+  "name": "@gumbee/structured",
+  "version": "1.0.0",
+  "description": "A schema-aware progressive JSON parser that builds structured objects from streamed text",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./describe": {
+      "import": {
+        "types": "./dist/describe.d.ts",
+        "default": "./dist/describe.js"
+      },
+      "require": {
+        "types": "./dist/describe.d.cts",
+        "default": "./dist/describe.cjs"
+      }
+    },
+    "./schema": {
+      "import": {
+        "types": "./dist/schema-entry.d.ts",
+        "default": "./dist/schema-entry.js"
+      },
+      "require": {
+        "types": "./dist/schema-entry.d.cts",
+        "default": "./dist/schema-entry.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bunup --dts",
+    "dev": "bunup --watch --dts",
+    "type-check": "tsc --noEmit",
+    "test": "vitest --config vitest.node.config.js --run",
+    "test:watch": "vitest --config vitest.node.config.js --watch",
+    "test:update": "vitest --config vitest.node.config.js --run -u",
+    "lint": "eslint src/",
+    "lint:fix": "eslint --fix src/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "bunup": "^0.16.10",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^10.0.1",
+    "globals": "^15.15.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0",
+    "vitest": "4.0.15"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
