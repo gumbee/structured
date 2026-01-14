@@ -191,7 +191,7 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
  * @param visited - Set of already visited schema IDs (for recursion)
  * @returns Array of all schema IDs including dependencies
  */
-export function collectSchemaDependencies(schemaIds: string[], registry: DescribeRegistry, visited = new Set<string>()): string[] {
+export function collectSchemaDependencies(schemaIds: string[], registry: DescribeRegistry, visited: Set<string> = new Set<string>()): string[] {
   const allDependencies = new Set<string>()
   const { schemaToId } = buildSchemaMaps(registry)
 

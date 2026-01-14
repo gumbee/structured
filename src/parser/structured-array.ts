@@ -17,8 +17,8 @@ export class StructuredArray extends ProgressiveValue<Progressive<any[]>> {
     ;(this.partial as any).__completed = false
   }
 
-  protected initial() {
-    return []
+  protected initial(): Progressive<any[]> {
+    return [] as Progressive<any[]>
   }
 
   public process(chunk: string): void {
