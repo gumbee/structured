@@ -36,10 +36,16 @@
  */
 
 // Schema - re-export Zod with alias/alternate extensions
-export * from "./schema"
+export * from "@/schema"
 
 // Parser
-export * from "./parser"
+export * from "@/parser"
+
+// Structured LLM types
+export * from "@/types"
 
 // Utilities
-export { clean } from "./utils"
+export * from "@/utils"
+
+// Describe (registry and TypeScript generation)
+export * from "@/describe"

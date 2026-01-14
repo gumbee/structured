@@ -1,11 +1,11 @@
 // Types
-export type { DescribeMeta, DescribableSchema, RegistryEntry } from "./types"
+export type { DescribeMeta, DescribableSchema, RegistryEntry } from "@/describe/types"
 
 // Registry
-export { DescribeRegistry } from "./registry"
+export { DescribeRegistry } from "@/describe/registry"
 
 // TypeScript conversion utilities
-export { schemaToTypescript, registryToTypescript } from "./typescript"
+export { schemaToTypescript, registryToTypescript } from "@/describe/typescript"
 
 // Dependency collection utilities
-export { collectSchemaDependencies } from "./dependencies"
+export { collectSchemaDependencies } from "@/describe/dependencies"

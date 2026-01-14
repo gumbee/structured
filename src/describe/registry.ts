@@ -1,6 +1,6 @@
-import type { DescribeMeta, DescribableSchema, RegistryEntry } from "./types"
-import { registryToTypescript } from "./typescript"
-import { collectSchemaDependencies } from "./dependencies"
+import type { DescribeMeta, DescribableSchema, RegistryEntry } from "@/describe/types"
+import { registryToTypescript } from "@/describe/typescript"
+import { collectSchemaDependencies } from "@/describe/dependencies"
 
 /**
  * A custom registry for registering and describing schemas.

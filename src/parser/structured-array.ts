@@ -1,6 +1,6 @@
-import { ProgressiveValue } from "./progressive-value"
-import { makeStructuredParser } from "./factory"
-import type { Progressive, StructuredParseOptions } from "./types"
+import { ProgressiveValue } from "@/parser/progressive-value"
+import { makeStructuredParser } from "@/parser/factory"
+import type { Progressive, StructuredParseOptions } from "@/parser/types"
 
 /**
  * Schema-aware progressive array parser

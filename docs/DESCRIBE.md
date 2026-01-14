@@ -211,15 +211,34 @@ type Post = {
 }
 ```
 
-**`schemaToTypescript(registry, schema)`**
+**`schemaToTypescript(schema, registry?, typeName?)`**
 
-Convert a single schema to a TypeScript type string.
+Convert a schema to complete TypeScript type definitions. Includes the main type and any referenced registry types as standalone named types.
+
+- `schema` - The Zod schema to convert
+- `registry` - Optional registry for resolving references to other schemas
+- `typeName` - Name for the main type (default: `"Output"`)
 
 ```typescript
 import { schemaToTypescript } from "@gumbee/structured/describe"
 
-const typeString = schemaToTypescript(registry, UserSchema)
-// "{\n  name: string\n  email: string\n}"
+// Simple standalone schema
+const output = schemaToTypescript(z.object({ name: z.string() }))
+// "type Output = {\n  name: string\n}\n\n"
+
+// With custom type name
+const customOutput = schemaToTypescript(z.string(), undefined, "MyType")
+// "type MyType = string\n\n"
+
+// With registry - includes referenced types as standalone definitions
+const Icon = z.object({ type: z.literal("icon"), name: z.string() })
+const Button = z.object({ label: z.string(), icon: Icon })
+
+registry.add(Icon, { id: "icon", description: "An icon" })
+registry.add(Button, { id: "button" })
+
+const fullOutput = schemaToTypescript(Button, registry, "Button")
+// "/**\n * An icon\n */\ntype Icon = {\n  type: \"icon\"\n  name: string\n}\n\ntype Button = {\n  label: string\n  icon: Icon\n}\n\n"
 ```
 
 **`toTypescript()`** (instance method)

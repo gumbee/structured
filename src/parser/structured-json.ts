@@ -1,8 +1,8 @@
 import type * as z from "zod"
-import { makeStructuredParser } from "./factory"
-import { type ProgressiveValue } from "./progressive-value"
-import { type DynamicRegistry } from "../schema"
-import { resolve } from "./resolver"
+import { makeStructuredParser } from "@/parser/factory"
+import { type ProgressiveValue } from "@/parser/progressive-value"
+import { type DynamicRegistry } from "@/schema"
+import { resolve } from "@/parser/resolver"
 
 export interface StructuredJsonOptions<T> {
   /** Schema to validate and guide parsing */
@@ -19,7 +19,8 @@ export interface StructuredJsonOptions<T> {
   skipPreamble?: boolean
   /**
    * Called when preamble text is found before JSON starts.
-   * Only called when skipPreamble is true and text exists before the JSON signature.
+   * Only called when skipPreamble is true and text exists before the JSON signature. Emits the entire preamble text as soon
+   * as the json begin is found or the parser is finished and no json was found.
    */
   onPreamble?: (text: string) => void
   /**

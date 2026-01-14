@@ -1,13 +1,12 @@
-import * as z from "zod"
-import { type ProgressiveValue } from "./progressive-value"
-import { ProgressiveNumber } from "./progressive-number"
-import { ProgressiveBoolean } from "./progressive-boolean"
-import { ProgressiveNull } from "./progressive-null"
-import { ProgressiveUndefined } from "./progressive-undefined"
-import { ProgressiveString } from "./progressive-string"
-import { StructuredObject } from "./structured-object"
-import { StructuredArray } from "./structured-array"
-import { type StructuredParseOptions } from "./types"
+import { type ProgressiveValue } from "@/parser/progressive-value"
+import { ProgressiveNumber } from "@/parser/progressive-number"
+import { ProgressiveBoolean } from "@/parser/progressive-boolean"
+import { ProgressiveNull } from "@/parser/progressive-null"
+import { ProgressiveUndefined } from "@/parser/progressive-undefined"
+import { ProgressiveString } from "@/parser/progressive-string"
+import { StructuredObject } from "@/parser/structured-object"
+import { StructuredArray } from "@/parser/structured-array"
+import { type StructuredParseOptions } from "@/parser/types"
 
 /**
  * Trims irrelevant characters from the start of the chunk so that the next character is semantically relevant for the JSON

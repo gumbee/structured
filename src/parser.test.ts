@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { StructuredJson, type StructuredJsonOptions, clean } from "./index"
+import { StructuredJson, type StructuredJsonOptions, clean } from "@/index"
 
 /**
  * Helper to parse JSON in chunks of a given size

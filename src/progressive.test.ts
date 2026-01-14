@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { z, StructuredJson, clean, type StructuredJsonOptions, dynamic, type Progressive } from "./index"
-import { DescribeRegistry } from "./describe"
+import { z, StructuredJson, clean, type StructuredJsonOptions, dynamic, type Progressive } from "@/index"
+import { DescribeRegistry } from "@/describe"
 
 const chunkwise = <T = any>(text: string, chunkSize: number, options: StructuredJsonOptions<T> = {}): T | undefined => {
   const parser = new StructuredJson<T>(options)

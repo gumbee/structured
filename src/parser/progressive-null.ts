@@ -1,4 +1,4 @@
-import { ProgressiveValue } from "./progressive-value"
+import { ProgressiveValue } from "@/parser/progressive-value"
 
 /**
  * Progressive null parser

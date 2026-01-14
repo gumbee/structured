@@ -1,5 +1,5 @@
 import * as z from "zod"
-import { buildAliasMap, dynamic, type DynamicRegistry, getStructuredMeta, isDynamicSchema, resolveKey } from "../schema"
+import { buildAliasMap, type DynamicRegistry, getStructuredMeta, isDynamicSchema, resolveKey } from "@/schema"
 
 type ResolverOptions = {
   schema?: z.ZodType<any>

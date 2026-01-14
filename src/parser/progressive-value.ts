@@ -1,4 +1,4 @@
-import { type StructuredParseOptions } from "./types"
+import { type StructuredParseOptions } from "@/parser/types"
 
 /**
  * Base class for progressive value parsers

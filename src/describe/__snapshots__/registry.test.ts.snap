@@ -1,0 +1,221 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Integration > should handle complex nested structures with arrays and unions 1`] = `
+"type Badge = {
+  type: "badge"
+  label: string
+  color: "red" | "green" | "blue"
+}
+
+type Avatar = {
+  type: "avatar"
+  src: string
+  alt: string | undefined
+}
+
+type ListItem = {
+  type: "list-item"
+  content: string
+  badges: Badge[]
+  avatar: Avatar | undefined
+}
+
+type List = {
+  type: "list"
+  items: ListItem[]
+  title: string | undefined
+}"
+`;
+
+exports[`Integration > should use schemaToTypescript with custom type name for single schema output 1`] = `
+"/**
+ * An icon
+ */
+type Icon = {
+  type: "icon"
+  name: string
+}
+
+/**
+ * A button
+ */
+type MyButton = {
+  type: "button"
+  label: string
+  icon: Icon | undefined
+}"
+`;
+
+exports[`Integration > should work end-to-end: register, collect deps, generate TypeScript 1`] = `
+"/**
+ * An icon component
+ */
+type Icon = {
+  type: "icon"
+  name: string
+  size: "small" | "medium" | "large" | undefined
+}
+
+/**
+ * A text component
+ */
+type Text = {
+  type: "text"
+  content: string
+}
+
+/**
+ * A card with icon and title
+ */
+type Card = {
+  type: "card"
+  icon: Icon | undefined
+  title: Text
+}"
+`;
+
+exports[`registryToTypescript > should convert PascalCase type names 1`] = `
+"type MyWidget = string
+
+type AnotherWidget = number"
+`;
+
+exports[`registryToTypescript > should convert all schemas to type definitions 1`] = `
+"type Icon = {
+  type: "icon"
+  name: string
+}
+
+type Text = {
+  type: "text"
+  content: string
+}"
+`;
+
+exports[`registryToTypescript > should generate complete type definitions with nested objects 1`] = `
+"/**
+ * An icon component
+ */
+type Icon = {
+  type: "icon"
+  name: string
+  size: number | undefined
+}
+
+/**
+ * A button with optional icon
+ */
+type Button = {
+  type: "button"
+  label: string
+  icon: Icon | undefined
+}"
+`;
+
+exports[`registryToTypescript > should include both description and rules in JSDoc 1`] = `
+"/**
+ * A code identifier
+ * Rules: Must be alphanumeric
+ */
+type Code = string"
+`;
+
+exports[`registryToTypescript > should include description as JSDoc 1`] = `
+"/**
+ * A text label
+ */
+type Label = string"
+`;
+
+exports[`registryToTypescript > should include rules as JSDoc 1`] = `
+"/**
+ * Rules: Must be alphanumeric
+ */
+type Code = string"
+`;
+
+exports[`registryToTypescript > should not duplicate types when dependencies are referenced multiple times 1`] = `
+"type Shared = {
+  type: "shared"
+  id: string
+}
+
+type A = {
+  type: "a"
+  shared: Shared
+}
+
+type B = {
+  type: "b"
+  shared: Shared
+}"
+`;
+
+exports[`schemaToTypescript > should convert array schema 1`] = `"type Output = string[]"`;
+
+exports[`schemaToTypescript > should convert boolean schema 1`] = `"type Output = boolean"`;
+
+exports[`schemaToTypescript > should convert enum schema 1`] = `"type Output = "small" | "medium" | "large""`;
+
+exports[`schemaToTypescript > should convert literal schema 1`] = `"type Output = "icon""`;
+
+exports[`schemaToTypescript > should convert nullable schema 1`] = `"type Output = string | null"`;
+
+exports[`schemaToTypescript > should convert number schema 1`] = `"type Output = number"`;
+
+exports[`schemaToTypescript > should convert object schema 1`] = `
+"type Output = {
+  type: "icon"
+  name: string
+}"
+`;
+
+exports[`schemaToTypescript > should convert optional schema 1`] = `"type Output = string | undefined"`;
+
+exports[`schemaToTypescript > should convert string schema with custom type name 1`] = `"type CustomName = string"`;
+
+exports[`schemaToTypescript > should convert string schema with default type name 1`] = `"type Output = string"`;
+
+exports[`schemaToTypescript > should convert union schema 1`] = `"type Output = string | number"`;
+
+exports[`schemaToTypescript > should handle deeply nested dependencies 1`] = `
+"type Leaf = {
+  type: "leaf"
+  value: string
+}
+
+type Branch = {
+  type: "branch"
+  leaf: Leaf
+}
+
+type Tree = {
+  type: "tree"
+  branches: Branch[]
+}"
+`;
+
+exports[`schemaToTypescript > should include JSDoc from registry metadata 1`] = `
+"/**
+ * A user object
+ * Rules: Name must be unique
+ */
+type User = {
+  id: number
+  name: string
+}"
+`;
+
+exports[`schemaToTypescript > should include referenced registry types as standalone types 1`] = `
+"/**
+ * An icon component
+ */
+type Icon = {
+  type: "icon"
+  name: string
+}
+
+type Container = {
+  items: Icon[]
+}"
+`;

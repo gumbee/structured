@@ -1,6 +1,6 @@
 import * as z from "zod"
-import type { DescribableSchema } from "./types"
-import type { DescribeRegistry } from "./registry"
+import type { DescribableSchema } from "@/describe/types"
+import type { DescribeRegistry } from "@/describe/registry"
 
 /**
  * Build lookup maps from schema instances to their registry IDs

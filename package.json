@@ -34,6 +34,16 @@
         "default": "./dist/schema-entry.cjs"
       }
     },
+    "./parser": {
+      "import": {
+        "types": "./dist/parser-entry.d.ts",
+        "default": "./dist/parser-entry.js"
+      },
+      "require": {
+        "types": "./dist/parser-entry.d.cts",
+        "default": "./dist/parser-entry.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",

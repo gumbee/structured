@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { z } from "../schema"
-import { DescribeRegistry } from "./registry"
-import { schemaToTypescript, registryToTypescript } from "./typescript"
-import { collectSchemaDependencies } from "./dependencies"
+import { z } from "@/schema"
+import { DescribeRegistry } from "@/describe/registry"
+import { schemaToTypescript, registryToTypescript } from "@/describe/typescript"
+import { collectSchemaDependencies } from "@/describe/dependencies"
 
 describe("DescribeRegistry", () => {
   let registry: DescribeRegistry
@@ -237,68 +237,93 @@ describe("schemaToTypescript", () => {
     registry = new DescribeRegistry()
   })
 
-  it("should convert string schema", () => {
+  it("should convert string schema with default type name", () => {
     const schema = z.string()
-    registry.add(schema, { id: "text" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("string")
+    const ts = schemaToTypescript(schema)
+
+    // Structural assertions
+    expect(ts).toContain("type Output =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(1)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should convert string schema with custom type name", () => {
+    const schema = z.string()
+
+    const ts = schemaToTypescript(schema, undefined, "CustomName")
+
+    // Structural assertions
+    expect(ts).toContain("type CustomName =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(1)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert number schema", () => {
     const schema = z.number()
-    registry.add(schema, { id: "num" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("number")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert boolean schema", () => {
     const schema = z.boolean()
-    registry.add(schema, { id: "bool" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("boolean")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert literal schema", () => {
     const schema = z.literal("icon")
-    registry.add(schema, { id: "iconType" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe('"icon"')
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert enum schema", () => {
     const schema = z.enum(["small", "medium", "large"])
-    registry.add(schema, { id: "size" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe('"small" | "medium" | "large"')
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert array schema", () => {
     const schema = z.array(z.string())
-    registry.add(schema, { id: "strings" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("(string)[]")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert optional schema", () => {
     const schema = z.string().optional()
-    registry.add(schema, { id: "optText" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("string | undefined")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert nullable schema", () => {
     const schema = z.string().nullable()
-    registry.add(schema, { id: "nullText" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("string | null")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert object schema", () => {
@@ -306,24 +331,23 @@ describe("schemaToTypescript", () => {
       type: z.literal("icon"),
       name: z.string(),
     })
-    registry.add(schema, { id: "icon" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe(`{
-  type: "icon"
-  name: string
-}`)
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert union schema", () => {
     const schema = z.union([z.string(), z.number()])
-    registry.add(schema, { id: "strOrNum" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe("string | number")
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toMatchSnapshot()
   })
 
-  it("should reference registered schemas by type name", () => {
+  it("should include referenced registry types as standalone types", () => {
     const icon = z.object({
       type: z.literal("icon"),
       name: z.string(),
@@ -332,27 +356,74 @@ describe("schemaToTypescript", () => {
       items: z.array(icon),
     })
 
-    registry.add(icon, { id: "icon" })
+    registry.add(icon, { id: "icon", description: "An icon component" })
     registry.add(container, { id: "container" })
 
-    const ts = schemaToTypescript(registry, container)
-    expect(ts).toBe(`{
-  items: (Icon)[]
-}`)
+    const ts = schemaToTypescript(container, registry, "Container")
+
+    // Structural assertions - verify both types are present
+    expect(ts).toContain("type Icon =")
+    expect(ts).toContain("type Container =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(2)
+
+    // Verify JSDoc is included for referenced type
+    expect(ts).toContain("/**")
+    expect(ts).toContain("An icon component")
+
+    // Verify Icon is defined before Container (dependency first)
+    const iconPos = ts.indexOf("type Icon =")
+    const containerPos = ts.indexOf("type Container =")
+    expect(iconPos).toBeLessThan(containerPos)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
-  it("should work with native Zod types", () => {
+  it("should include JSDoc from registry metadata", () => {
     const schema = z.object({
       id: z.number(),
       name: z.string(),
     })
-    registry.add(schema, { id: "user" })
+    registry.add(schema, { id: "user", description: "A user object", rules: "Name must be unique" })
 
-    const ts = schemaToTypescript(registry, schema)
-    expect(ts).toBe(`{
-  id: number
-  name: string
-}`)
+    const ts = schemaToTypescript(schema, registry, "User")
+
+    // Structural assertions
+    expect(ts).toContain("type User =")
+    expect(ts).toContain("/**")
+    expect(ts).toContain("A user object")
+    expect(ts).toContain("Rules: Name must be unique")
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should handle deeply nested dependencies", () => {
+    const leaf = z.object({ type: z.literal("leaf"), value: z.string() })
+    const branch = z.object({ type: z.literal("branch"), leaf: leaf })
+    const tree = z.object({ type: z.literal("tree"), branches: z.array(branch) })
+
+    registry.add(leaf, { id: "leaf" })
+    registry.add(branch, { id: "branch" })
+    registry.add(tree, { id: "tree" })
+
+    const ts = schemaToTypescript(tree, registry, "Tree")
+
+    // Structural assertions - all three types present
+    expect(ts).toContain("type Leaf =")
+    expect(ts).toContain("type Branch =")
+    expect(ts).toContain("type Tree =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(3)
+
+    // Verify order: dependencies before dependents
+    const leafPos = ts.indexOf("type Leaf =")
+    const branchPos = ts.indexOf("type Branch =")
+    const treePos = ts.indexOf("type Tree =")
+    expect(leafPos).toBeLessThan(branchPos)
+    expect(branchPos).toBeLessThan(treePos)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 })
 
@@ -369,17 +440,13 @@ describe("registryToTypescript", () => {
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`type Icon = {
-  type: "icon"
-  name: string
-}
+    // Structural assertions
+    expect(ts).toContain("type Icon =")
+    expect(ts).toContain("type Text =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(2)
 
-type Text = {
-  type: "text"
-  content: string
-}
-
-`)
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should include description as JSDoc", () => {
@@ -387,12 +454,13 @@ type Text = {
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`/**
- * A text label
- */
-type Label = string
+    // Structural assertions
+    expect(ts).toContain("type Label =")
+    expect(ts).toContain("/**")
+    expect(ts).toContain("A text label")
 
-`)
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should include rules as JSDoc", () => {
@@ -400,12 +468,12 @@ type Label = string
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`/**
- * Rules: Must be alphanumeric
- */
-type Code = string
+    // Structural assertions
+    expect(ts).toContain("type Code =")
+    expect(ts).toContain("Rules: Must be alphanumeric")
 
-`)
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should include both description and rules in JSDoc", () => {
@@ -413,13 +481,12 @@ type Code = string
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`/**
- * A code identifier
- * Rules: Must be alphanumeric
- */
-type Code = string
+    // Structural assertions
+    expect(ts).toContain("A code identifier")
+    expect(ts).toContain("Rules: Must be alphanumeric")
 
-`)
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should convert PascalCase type names", () => {
@@ -428,11 +495,13 @@ type Code = string
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`type MyWidget = string
+    // Structural assertions
+    expect(ts).toContain("type MyWidget =")
+    expect(ts).toContain("type AnotherWidget =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(2)
 
-type AnotherWidget = number
-
-`)
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 
   it("should generate complete type definitions with nested objects", () => {
@@ -453,25 +522,36 @@ type AnotherWidget = number
 
     const ts = registryToTypescript(registry)
 
-    expect(ts).toBe(`/**
- * An icon component
- */
-type Icon = {
-  type: "icon"
-  name: string
-  size: number | undefined
-}
+    // Structural assertions
+    expect(ts).toContain("type Icon =")
+    expect(ts).toContain("type Button =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(2)
+    expect(ts).toContain("An icon component")
+    expect(ts).toContain("A button with optional icon")
 
-/**
- * A button with optional icon
- */
-type Button = {
-  type: "button"
-  label: string
-  icon: Icon | undefined
-}
+    // Snapshot
+    expect(ts).toMatchSnapshot()
+  })
 
-`)
+  it("should not duplicate types when dependencies are referenced multiple times", () => {
+    const shared = z.object({ type: z.literal("shared"), id: z.string() })
+    const a = z.object({ type: z.literal("a"), shared: shared })
+    const b = z.object({ type: z.literal("b"), shared: shared })
+
+    registry.add(shared, { id: "shared" })
+    registry.add(a, { id: "a" })
+    registry.add(b, { id: "b" })
+
+    const ts = registryToTypescript(registry)
+
+    // Structural assertions - each type should appear exactly once
+    expect(ts.match(/type Shared =/g)).toHaveLength(1)
+    expect(ts.match(/type A =/g)).toHaveLength(1)
+    expect(ts.match(/type B =/g)).toHaveLength(1)
+    expect(ts.match(/type \w+ =/g)).toHaveLength(3)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 })
 
@@ -624,32 +704,17 @@ describe("Integration", () => {
     // Generate TypeScript
     const typescript = subset.toTypescript()
 
-    // Verify each type definition is complete (order may vary in subset)
-    expect(typescript).toContain(`/**
- * An icon component
- */
-type Icon = {
-  type: "icon"
-  name: string
-  size: "small" | "medium" | "large" | undefined
-}`)
+    // Structural assertions
+    expect(typescript).toContain("type Icon =")
+    expect(typescript).toContain("type Text =")
+    expect(typescript).toContain("type Card =")
+    expect(typescript.match(/type \w+ =/g)).toHaveLength(3)
+    expect(typescript).toContain("An icon component")
+    expect(typescript).toContain("A text component")
+    expect(typescript).toContain("A card with icon and title")
 
-    expect(typescript).toContain(`/**
- * A text component
- */
-type Text = {
-  type: "text"
-  content: string
-}`)
-
-    expect(typescript).toContain(`/**
- * A card with icon and title
- */
-type Card = {
-  type: "card"
-  icon: Icon | undefined
-  title: Text
-}`)
+    // Snapshot
+    expect(typescript).toMatchSnapshot()
   })
 
   it("should handle complex nested structures with arrays and unions", () => {
@@ -689,31 +754,43 @@ type Card = {
     // Verify full TypeScript output
     const typescript = registry.toTypescript()
 
-    expect(typescript).toBe(`type Badge = {
-  type: "badge"
-  label: string
-  color: "red" | "green" | "blue"
-}
+    // Structural assertions
+    expect(typescript).toContain("type Badge =")
+    expect(typescript).toContain("type Avatar =")
+    expect(typescript).toContain("type ListItem =")
+    expect(typescript).toContain("type List =")
+    expect(typescript.match(/type \w+ =/g)).toHaveLength(4)
 
-type Avatar = {
-  type: "avatar"
-  src: string
-  alt: string | undefined
-}
+    // Snapshot
+    expect(typescript).toMatchSnapshot()
+  })
 
-type ListItem = {
-  type: "list-item"
-  content: string
-  badges: (Badge)[]
-  avatar: Avatar | undefined
-}
+  it("should use schemaToTypescript with custom type name for single schema output", () => {
+    const registry = new DescribeRegistry()
 
-type List = {
-  type: "list"
-  items: (ListItem)[]
-  title: string | undefined
-}
+    const Icon = z.object({
+      type: z.literal("icon"),
+      name: z.string(),
+    })
 
-`)
+    const Button = z.object({
+      type: z.literal("button"),
+      label: z.string(),
+      icon: Icon.optional(),
+    })
+
+    registry.add(Icon, { id: "icon", description: "An icon" })
+    registry.add(Button, { id: "button", description: "A button" })
+
+    // Use schemaToTypescript to get just Button and its deps with custom name
+    const ts = schemaToTypescript(Button, registry, "MyButton")
+
+    // Structural assertions
+    expect(ts).toContain("type Icon =")
+    expect(ts).toContain("type MyButton =")
+    expect(ts.match(/type \w+ =/g)).toHaveLength(2)
+
+    // Snapshot
+    expect(ts).toMatchSnapshot()
   })
 })

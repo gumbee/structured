@@ -1,5 +1,5 @@
 import type * as z from "zod"
-import { type DynamicRegistry } from "../schema/meta"
+import { type DynamicRegistry } from "@/schema/meta"
 
 /**
  * Progressive type that adds metadata to track parsing progress

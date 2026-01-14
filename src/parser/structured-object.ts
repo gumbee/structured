@@ -1,7 +1,7 @@
-import { ProgressiveValue } from "./progressive-value"
-import { makeStructuredParser } from "./factory"
-import { ProgressiveString } from "./progressive-string"
-import type { Progressive, StructuredParseOptions } from "./types"
+import { ProgressiveValue } from "@/parser/progressive-value"
+import { makeStructuredParser } from "@/parser/factory"
+import { ProgressiveString } from "@/parser/progressive-string"
+import type { Progressive, StructuredParseOptions } from "@/parser/types"
 
 /**
  * Schema-aware progressive object parser

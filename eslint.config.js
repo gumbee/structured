@@ -10,6 +10,10 @@ export default ts.config(
   {
     languageOptions: {
       globals: { ...globals.node },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   {

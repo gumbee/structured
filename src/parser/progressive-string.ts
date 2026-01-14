@@ -1,5 +1,5 @@
-import { ProgressiveValue } from "./progressive-value"
-import { type StructuredParseOptions } from "./types"
+import { ProgressiveValue } from "@/parser/progressive-value"
+import { type StructuredParseOptions } from "@/parser/types"
 
 /**
  * Progressive string parser that handles escape sequences
