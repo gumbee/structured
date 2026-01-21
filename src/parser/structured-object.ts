@@ -35,7 +35,7 @@ export class StructuredObject extends ProgressiveValue<Progressive<Record<string
     if (!this.keyStream && !this.valueStream) {
       if (chunk.startsWith("}")) {
         this.partial.__completed = true
-        this.end(chunk.slice(1).trim())
+        this.end(chunk.slice(1))
         return
       }
     }
@@ -131,15 +131,12 @@ export class StructuredObject extends ProgressiveValue<Progressive<Record<string
         this.partial.__completed = true
         this.end(chunk.slice(chunk.indexOf("}") + 1))
       } else if (chunk.trimStart().startsWith("]")) {
-        console.error("[Structured] Unexpected end of array")
         this.partial.__completed = true
         this.end(chunk.slice(chunk.indexOf("]") + 1))
       } else if (chunk.trimStart().startsWith("{")) {
-        console.error("[Structured] Unexpected start of object")
         this.partial.__completed = true
         this.end(chunk.slice(chunk.indexOf("{") + 1))
       } else if (chunk.trimStart().startsWith("[")) {
-        console.error("[Structured] Unexpected start of array")
         this.partial.__completed = true
         this.end(chunk.slice(chunk.indexOf("[") + 1))
       } else if (chunk.trimStart().length > 0 && typeof this.partial[this.currentKey] === "string") {
@@ -158,9 +155,6 @@ export class StructuredObject extends ProgressiveValue<Progressive<Record<string
         this.valueStream = s
 
         if (s) {
-          console.warn("[Structured Failsafe] Accidentally forgot to escape string.")
-          this.error = true
-
           this.partial.__done = this.partial.__done!.filter((key) => key !== this.currentKey)
           this.state = "value"
           s.partial = this.partial[this.currentKey] + this.quote + ""

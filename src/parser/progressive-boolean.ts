@@ -2,7 +2,6 @@ import { ProgressiveValue } from "@/parser/progressive-value"
 
 /**
  * Progressive boolean parser
- * Adapted from apps/os/src/shared/features/progressive-json/progressive-boolean.ts
  */
 export class ProgressiveBoolean extends ProgressiveValue<boolean> {
   private buffer: string = ""
@@ -18,7 +17,7 @@ export class ProgressiveBoolean extends ProgressiveValue<boolean> {
     let i = 0
 
     while (i < chunk.length) {
-      const char = chunk[i].toLowerCase()
+      const char = chunk[i]!.toLowerCase()
       this.buffer += char
       i++
 

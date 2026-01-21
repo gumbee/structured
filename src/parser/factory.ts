@@ -36,15 +36,15 @@ export function makeStructuredParser(chunk: string, options: StructuredParseOpti
 
   chunk = trimIrrelevantCharacters(chunk)
   // get the first character that's relevant for the JSON
-  const char = chunk[0]
+  const char = chunk[0]!
   const type = getActualType(char)
 
   // Create parser based on input type
   if (type === "number") {
     stream = new ProgressiveNumber(options)
   } else if (type === "string") {
-    skip = chunk[0]
-    stream = new ProgressiveString(chunk[0], options)
+    skip = chunk[0]!
+    stream = new ProgressiveString(chunk[0]!, options)
   } else if (type === "array") {
     stream = new StructuredArray(options)
     skip = "["

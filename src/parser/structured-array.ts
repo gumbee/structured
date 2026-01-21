@@ -34,7 +34,6 @@ export class StructuredArray extends ProgressiveValue<Progressive<any[]>> {
       } else if (chunk.trimStart().startsWith(",")) {
         this.process(chunk.trimStart().slice(1))
       } else if (chunk.trimStart().startsWith("}")) {
-        console.error("[Structured] Unexpected end of object in array")
         ;(this.partial as any).__completed = true
         this.end(chunk.slice(chunk.indexOf("}") + 1))
       } else {
@@ -44,7 +43,6 @@ export class StructuredArray extends ProgressiveValue<Progressive<any[]>> {
           ...this.options,
           onComplete: (json: any, remainder: string) => {
             // we're done processing the current element so we can null out the stream
-            this.error = this.error || (this.#elementStream?.error ?? false)
             this.#elementStream = null
             // add the element to the partial array
             this.partial[this.#index] = json

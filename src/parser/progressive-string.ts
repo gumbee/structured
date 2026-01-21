@@ -3,7 +3,6 @@ import { type StructuredParseOptions } from "@/parser/types"
 
 /**
  * Progressive string parser that handles escape sequences
- * Adapted from apps/os/src/shared/features/progressive-json/progressive-string.ts
  */
 export class ProgressiveString extends ProgressiveValue<string> {
   quote: string = ""

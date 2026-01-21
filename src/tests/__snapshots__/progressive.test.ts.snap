@@ -1,0 +1,81 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for backtick handling with chunk size 3 1`] = `
+[
+  "Use",
+  " \`c",
+  "ode",
+  "\` h",
+  "ere",
+  " ",
+]
+`;
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for chunk size 1 1`] = `
+[
+  "H",
+  "e",
+  "l",
+  "l",
+  "o",
+  " ",
+  "w",
+  "o",
+  "r",
+  "l",
+  "d",
+  "!",
+  " ",
+]
+`;
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for chunk size 2 1`] = `
+[
+  "He",
+  "ll",
+  "o ",
+  "wo",
+  "rl",
+  "d!",
+  " ",
+]
+`;
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for chunk size 5 1`] = `
+[
+  "Hello",
+  " worl",
+  "d! ",
+]
+`;
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for code fence with chunk size 3 1`] = `
+[
+  "Res",
+  "pon",
+  "se:",
+  "
+",
+]
+`;
+
+exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for multiple JSON with chunk size 4 1`] = `
+{
+  "completedJsons": [
+    {
+      "a": 1,
+    },
+    {
+      "b": 2,
+    },
+  ],
+  "preambleChunks": [
+    "Firs",
+    "t: ",
+    "
+",
+    "Seco",
+    "nd: ",
+  ],
+}
+`;

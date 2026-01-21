@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import * as z from "zod"
 import { resolve, tryResolveWith } from "@/parser/resolver"
 import { dynamic, type DynamicRegistry, type DynamicRegistryEntry } from "@/schema/meta"
-import "./schema/meta" // Import to apply Zod extensions
+import "../schema/meta" // Import to apply Zod extensions
 
 describe("tryResolveWith", () => {
   describe("primitives", () => {

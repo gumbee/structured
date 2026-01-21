@@ -2,7 +2,6 @@ import { ProgressiveValue } from "@/parser/progressive-value"
 
 /**
  * Progressive undefined parser
- * LLMs sometimes output `undefined` which is not valid JSON. We still handle it though.
  */
 export class ProgressiveUndefined extends ProgressiveValue<undefined> {
   private buffer: string = ""
@@ -18,7 +17,7 @@ export class ProgressiveUndefined extends ProgressiveValue<undefined> {
     let i = 0
 
     while (i < chunk.length) {
-      const char = chunk[i].toLowerCase()
+      const char = chunk[i]!.toLowerCase()
       this.buffer += char
       i++
 

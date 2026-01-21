@@ -6,6 +6,7 @@ export default defineConfig({
     "src/describe.ts",
     "src/schema-entry.ts",
     "src/parser-entry.ts",
+    "src/queries-entry.ts",
   ],
   format: ["esm", "cjs"],
   dts: true,

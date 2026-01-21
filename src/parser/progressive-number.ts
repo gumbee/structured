@@ -2,7 +2,6 @@ import { ProgressiveValue } from "@/parser/progressive-value"
 
 /**
  * Progressive number parser
- * Adapted from apps/os/src/shared/features/progressive-json/progressive-number.ts
  */
 export class ProgressiveNumber extends ProgressiveValue<number> {
   private buffer: string = ""
@@ -18,7 +17,7 @@ export class ProgressiveNumber extends ProgressiveValue<number> {
     let i = 0
 
     while (i < chunk.length) {
-      const char = chunk[i]
+      const char = chunk[i]!
 
       if (/[\d.eE+-]/.test(char)) {
         this.buffer += char

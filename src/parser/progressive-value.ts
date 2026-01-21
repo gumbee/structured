@@ -2,12 +2,10 @@ import { type StructuredParseOptions } from "@/parser/types"
 
 /**
  * Base class for progressive value parsers
- * Adapted from apps/os/src/shared/features/progressive-json/progressive-value.ts
  */
 export abstract class ProgressiveValue<T = any> {
   public partial: T
   protected completed: boolean = false
-  public error: boolean = false
   protected options: StructuredParseOptions
 
   constructor(options: StructuredParseOptions) {

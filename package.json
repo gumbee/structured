@@ -44,6 +44,16 @@
         "default": "./dist/parser-entry.cjs"
       }
     },
+    "./queries": {
+      "import": {
+        "types": "./dist/queries-entry.d.ts",
+        "default": "./dist/queries-entry.js"
+      },
+      "require": {
+        "types": "./dist/queries-entry.d.cts",
+        "default": "./dist/queries-entry.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",

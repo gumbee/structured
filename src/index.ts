@@ -45,7 +45,7 @@ export * from "@/parser"
 export * from "@/types"
 
 // Utilities
-export * from "@/utils"
+export { clean, unwrapSchema } from "@/utils"
 
 // Describe (registry and TypeScript generation)
 export * from "@/describe"
