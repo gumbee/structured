@@ -1,7 +1,7 @@
 import { z } from "@/schema"
 
-export { clean } from "@/utils/clean"
-export { isCompleted } from "@/utils/queries"
+export { clean } from "./clean"
+export { isCompleted } from "./queries"
 
 /**
  * Unwrap optional/nullable/default wrappers to get to the inner schema

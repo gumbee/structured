@@ -16,42 +16,42 @@
     },
     "./describe": {
       "import": {
-        "types": "./dist/describe.d.ts",
-        "default": "./dist/describe.js"
+        "types": "./dist/describe/index.d.ts",
+        "default": "./dist/describe/index.js"
       },
       "require": {
-        "types": "./dist/describe.d.cts",
-        "default": "./dist/describe.cjs"
+        "types": "./dist/describe/index.d.cts",
+        "default": "./dist/describe/index.cjs"
       }
     },
     "./schema": {
       "import": {
-        "types": "./dist/schema-entry.d.ts",
-        "default": "./dist/schema-entry.js"
+        "types": "./dist/schema/index.d.ts",
+        "default": "./dist/schema/index.js"
       },
       "require": {
-        "types": "./dist/schema-entry.d.cts",
-        "default": "./dist/schema-entry.cjs"
+        "types": "./dist/schema/index.d.cts",
+        "default": "./dist/schema/index.cjs"
       }
     },
     "./parser": {
       "import": {
-        "types": "./dist/parser-entry.d.ts",
-        "default": "./dist/parser-entry.js"
+        "types": "./dist/parser/index.d.ts",
+        "default": "./dist/parser/index.js"
       },
       "require": {
-        "types": "./dist/parser-entry.d.cts",
-        "default": "./dist/parser-entry.cjs"
+        "types": "./dist/parser/index.d.cts",
+        "default": "./dist/parser/index.cjs"
       }
     },
     "./queries": {
       "import": {
-        "types": "./dist/queries-entry.d.ts",
-        "default": "./dist/queries-entry.js"
+        "types": "./dist/queries.d.ts",
+        "default": "./dist/queries.js"
       },
       "require": {
-        "types": "./dist/queries-entry.d.cts",
-        "default": "./dist/queries-entry.cjs"
+        "types": "./dist/queries.d.cts",
+        "default": "./dist/queries.cjs"
       }
     },
     "./package.json": "./package.json"

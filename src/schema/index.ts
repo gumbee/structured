@@ -20,7 +20,7 @@
  */
 
 // Import meta.ts to apply prototype extensions and re-export z
-export { z } from "@/schema/meta"
+export { z } from "./meta"
 
 // Export metadata types and helpers
-export * from "@/schema/meta"
+export * from "./meta"
