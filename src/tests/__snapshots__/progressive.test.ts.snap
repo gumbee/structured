@@ -7,7 +7,9 @@ exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot 
   "ode",
   "\` h",
   "ere",
-  " ",
+  " {"",
+  "y":",
+  " 2}",
 ]
 `;
 
@@ -26,6 +28,14 @@ exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot 
   "d",
   "!",
   " ",
+  "{",
+  """,
+  "x",
+  """,
+  ":",
+  " ",
+  "1",
+  "}",
 ]
 `;
 
@@ -37,7 +47,11 @@ exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot 
   "wo",
   "rl",
   "d!",
-  " ",
+  " {",
+  ""x",
+  "":",
+  " 1",
+  "}",
 ]
 `;
 
@@ -45,7 +59,9 @@ exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot 
 [
   "Hello",
   " worl",
-  "d! ",
+  "d! {"",
+  "x": 1",
+  "}",
 ]
 `;
 
@@ -61,21 +77,17 @@ exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot 
 
 exports[`Progressive Preamble Emission > Snapshot Tests > should match snapshot for multiple JSON with chunk size 4 1`] = `
 {
-  "completedJsons": [
-    {
-      "a": 1,
-    },
-    {
-      "b": 2,
-    },
-  ],
+  "completedJsons": [],
   "preambleChunks": [
     "Firs",
-    "t: ",
-    "
+    "t: {",
+    ""a":",
+    " 1}
 ",
     "Seco",
     "nd: ",
+    "{"b"",
+    ": 2}",
   ],
 }
 `;

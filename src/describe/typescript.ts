@@ -49,6 +49,23 @@ function buildZodToIdMap(registry: DescribeRegistry | undefined): Map<ZodType, s
 }
 
 /**
+ * Extract description from a schema, unwrapping optional/nullable if needed.
+ * This handles cases like z.string().describe("foo").optional() where the
+ * description is on the inner type, not the wrapper.
+ */
+function getSchemaDescription(schema: ZodType): string | undefined {
+  // Check if this schema has a description
+  if (schema.description) {
+    return schema.description
+  }
+  // Unwrap optional/nullable to find inner description
+  if (schema instanceof ZodOptional || schema instanceof ZodNullable) {
+    return getSchemaDescription(schema.unwrap())
+  }
+  return undefined
+}
+
+/**
  * Convert a schema to a TypeScript type body string (without type declaration)
  * Also collects referenced registry types during traversal
  */
@@ -69,13 +86,14 @@ function toTs(
   const schemaId = zodToId.get(s)
   const meta = schemaId && registry ? registry.getMeta(schemaId) : undefined
 
-  // If schema is not in registry and not a utility, skip it
-  if (schemaId && registry && !registry.has(schemaId) && !meta?.utility) {
+  // If schema is not in registry, skip it
+  if (schemaId && registry && !registry.has(schemaId)) {
     return undefined
   }
 
   // If schema has an ID and we want a reference (not defining it), return the type name
-  if (schemaId && referential && !meta?.utility) {
+  // This applies to both regular and utility schemas - they are referenced by name
+  if (schemaId && referential) {
     // Track this as a referenced type
     referencedTypes.add(schemaId)
     return toTypeName(schemaId)
@@ -178,12 +196,8 @@ function toTs(
       .map(([key, value]) => {
         const valueSchema = value as DescribableSchema
         const tsType = toTs(valueSchema, true, newDepth, registry, zodToId, referencedTypes)
-        // Get description from Zod schema using the .description getter
-        let description: string | undefined
-        if (valueSchema instanceof ZodType) {
-          // Zod provides .description as a getter for _def.description
-          description = valueSchema.description
-        }
+        // Get description from Zod schema, unwrapping optional/nullable if needed
+        const description = valueSchema instanceof ZodType ? getSchemaDescription(valueSchema) : undefined
         return [key, tsType, description] as const
       })
       .filter(([, value]) => value !== undefined)
@@ -225,6 +239,15 @@ function formatJsDoc(meta: Partial<DescribeMeta> | undefined): string {
 }
 
 /**
+ * Rendered type information including the type definition string
+ */
+interface RenderedType {
+  typeName: string
+  typeDefinition: string
+  isUtility: boolean
+}
+
+/**
  * Internal function to render a schema as a TypeScript type definition.
  * Handles dependency traversal and tracks already-rendered types.
  *
@@ -234,7 +257,7 @@ function formatJsDoc(meta: Partial<DescribeMeta> | undefined): string {
  * @param registry - Optional registry for resolving references
  * @param zodToId - Map from Zod schemas to registry IDs
  * @param alreadyRendered - Set of type names already rendered (to avoid duplicates)
- * @returns Object with output string and list of type names that were rendered
+ * @returns Object with list of rendered types (including utility status)
  */
 function renderSchemaInternal(
   schema: DescribableSchema,
@@ -243,10 +266,10 @@ function renderSchemaInternal(
   registry: DescribeRegistry | undefined,
   zodToId: Map<ZodType, string>,
   alreadyRendered: Set<string>,
-): { output: string; rendered: string[] } {
+): { renderedTypes: RenderedType[] } {
   // If this type was already rendered, skip it
   if (alreadyRendered.has(typeName)) {
-    return { output: "", rendered: [] }
+    return { renderedTypes: [] }
   }
 
   // Collect referenced types during traversal
@@ -256,12 +279,11 @@ function renderSchemaInternal(
   const typeBody = toTs(schema, false, 0, registry, zodToId, referencedTypes)
 
   if (!typeBody) {
-    return { output: "", rendered: [] }
+    return { renderedTypes: [] }
   }
 
   // Track all types we render
-  const rendered: string[] = []
-  let output = ""
+  const renderedTypes: RenderedType[] = []
 
   // First, recursively render all referenced types that haven't been rendered yet
   for (const refId of referencedTypes) {
@@ -272,27 +294,66 @@ function renderSchemaInternal(
     const refEntry = registry?.get(refId)
     if (refEntry) {
       const refResult = renderSchemaInternal(refEntry.schema, refEntry.meta, toTypeName(refEntry.meta.id), registry, zodToId, alreadyRendered)
-      output += refResult.output
-      rendered.push(...refResult.rendered)
+      renderedTypes.push(...refResult.renderedTypes)
       // Add to alreadyRendered to prevent duplicates in subsequent iterations
-      for (const r of refResult.rendered) {
-        alreadyRendered.add(r)
+      for (const rt of refResult.renderedTypes) {
+        alreadyRendered.add(rt.typeName)
       }
     }
   }
 
   // Now render this type
   const jsDoc = formatJsDoc(meta)
-  output += `${jsDoc}type ${typeName} = ${typeBody}\n\n`
-  rendered.push(typeName)
+  const typeDefinition = `${jsDoc}type ${typeName} = ${typeBody}\n\n`
+  renderedTypes.push({
+    typeName,
+    typeDefinition,
+    isUtility: meta?.utility ?? false,
+  })
   alreadyRendered.add(typeName)
 
-  return { output, rendered }
+  return { renderedTypes }
+}
+
+/**
+ * Format rendered types into sections (utility types first, then main types)
+ * Only adds section headers when both main and utility types are present.
+ */
+function formatWithSections(renderedTypes: RenderedType[]): string {
+  const mainTypes = renderedTypes.filter((t) => !t.isUtility)
+  const utilityTypes = renderedTypes.filter((t) => t.isUtility)
+
+  // Only add section headers if we have both main and utility types
+  const needsSections = mainTypes.length > 0 && utilityTypes.length > 0
+
+  let result = ""
+
+  // Utility types come first (they are referenced by main types)
+  if (utilityTypes.length > 0) {
+    if (needsSections) {
+      result += "// --- Utility Types ---\n\n"
+    }
+    for (const t of utilityTypes) {
+      result += t.typeDefinition
+    }
+  }
+
+  if (mainTypes.length > 0) {
+    if (needsSections) {
+      result += "// --- Main Types ---\n\n"
+    }
+    for (const t of mainTypes) {
+      result += t.typeDefinition
+    }
+  }
+
+  return result
 }
 
 /**
  * Convert a schema to TypeScript type definitions.
  * Includes the main type and any referenced registry types.
+ * Utility types are placed in a separate section at the end.
  *
  * @param schema - The schema to convert
  * @param registry - Optional registry containing schema definitions for resolving references
@@ -309,18 +370,20 @@ export function schemaToTypescript(schema: DescribableSchema, registry?: Describ
 
   const result = renderSchemaInternal(schema, meta, typeName, registry, zodToId, alreadyRendered)
 
-  return result.output.trimEnd()
+  return formatWithSections(result.renderedTypes).trimEnd()
 }
 
 /**
- * Convert all schemas in a registry to TypeScript type definitions
+ * Convert all schemas in a registry to TypeScript type definitions.
+ * Main types are listed first, followed by utility types in a separate section.
+ *
  * @param registry - The registry containing schema definitions
  * @returns TypeScript code string with type definitions
  */
 export function registryToTypescript(registry: DescribeRegistry): string {
   const zodToId = buildZodToIdMap(registry)
   const alreadyRendered = new Set<string>()
-  let result = ""
+  const allRenderedTypes: RenderedType[] = []
 
   for (const entry of registry.values()) {
     const { schema, meta } = entry
@@ -331,8 +394,8 @@ export function registryToTypescript(registry: DescribeRegistry): string {
 
     const typeName = toTypeName(meta.id)
     const renderResult = renderSchemaInternal(schema, meta, typeName, registry, zodToId, alreadyRendered)
-    result += renderResult.output
+    allRenderedTypes.push(...renderResult.renderedTypes)
   }
 
-  return result.trimEnd()
+  return formatWithSections(allRenderedTypes).trimEnd()
 }

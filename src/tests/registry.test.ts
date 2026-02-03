@@ -338,6 +338,89 @@ describe("schemaToTypescript", () => {
     expect(ts).toMatchSnapshot()
   })
 
+  it("should include field descriptions as inline comments", () => {
+    const schema = z.object({
+      home: z.string().describe("The home of the user"),
+      age: z.number().describe("The age in years"),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("type Output =")
+    expect(ts).toContain("// The home of the user")
+    expect(ts).toContain("// The age in years")
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should include field descriptions when wrapped with optional", () => {
+    const schema = z.object({
+      nickname: z.string().describe("An optional nickname").optional(),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("// An optional nickname")
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should include field descriptions when wrapped with nullable", () => {
+    const schema = z.object({
+      middleName: z.string().describe("Middle name if any").nullable(),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("// Middle name if any")
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should include field descriptions when describe is called on optional", () => {
+    const schema = z.object({
+      bio: z.string().optional().describe("A short biography"),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("// A short biography")
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should handle mixed fields with and without descriptions", () => {
+    const schema = z.object({
+      id: z.number(),
+      name: z.string().describe("The user's full name"),
+      email: z.string(),
+      phone: z.string().describe("Contact phone number").optional(),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("id: number")
+    expect(ts).not.toMatch(/id: number\s*\/\//)
+    expect(ts).toContain("// The user's full name")
+    expect(ts).toContain("email: string")
+    expect(ts).not.toMatch(/email: string\s*\/\//)
+    expect(ts).toContain("// Contact phone number")
+    expect(ts).toMatchSnapshot()
+  })
+
+  it("should include field descriptions in nested objects", () => {
+    const schema = z.object({
+      user: z.object({
+        name: z.string().describe("User's name"),
+        settings: z.object({
+          theme: z.string().describe("UI theme preference"),
+        }),
+      }),
+    })
+
+    const ts = schemaToTypescript(schema)
+
+    expect(ts).toContain("// User's name")
+    expect(ts).toContain("// UI theme preference")
+    expect(ts).toMatchSnapshot()
+  })
+
   it("should convert union schema", () => {
     const schema = z.union([z.string(), z.number()])
 
@@ -792,5 +875,227 @@ describe("Integration", () => {
 
     // Snapshot
     expect(ts).toMatchSnapshot()
+  })
+})
+
+describe("Utility Schemas", () => {
+  let registry: DescribeRegistry
+
+  beforeEach(() => {
+    registry = new DescribeRegistry()
+  })
+
+  describe("registryToTypescript", () => {
+    it("should render utility schemas as named types, not inlined", () => {
+      const Color = z.object({
+        r: z.number(),
+        g: z.number(),
+        b: z.number(),
+      })
+
+      const Button = z.object({
+        type: z.literal("button"),
+        label: z.string(),
+        color: Color,
+      })
+
+      registry.add(Color, { id: "color", utility: true })
+      registry.add(Button, { id: "button" })
+
+      const ts = registryToTypescript(registry)
+
+      // Utility schema should be defined as a named type
+      expect(ts).toContain("type Color =")
+
+      // Button should reference Color by name, not inline it
+      expect(ts).toContain("color: Color")
+      expect(ts).not.toMatch(/color: \{/)
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should separate utility schemas into a dedicated section with headers", () => {
+      const Size = z.enum(["small", "medium", "large"])
+      const Icon = z.object({
+        type: z.literal("icon"),
+        name: z.string(),
+        size: Size,
+      })
+
+      registry.add(Size, { id: "size", utility: true, description: "Size options" })
+      registry.add(Icon, { id: "icon", description: "An icon component" })
+
+      const ts = registryToTypescript(registry)
+
+      // Should have section headers
+      expect(ts).toContain("// --- Main Types ---")
+      expect(ts).toContain("// --- Utility Types ---")
+
+      // Utility types should come before main types section
+      const mainTypesPos = ts.indexOf("// --- Main Types ---")
+      const utilityTypesPos = ts.indexOf("// --- Utility Types ---")
+      expect(utilityTypesPos).toBeLessThan(mainTypesPos)
+
+      // Size should be in utility section (after utility header, before main header)
+      const sizePos = ts.indexOf("type Size =")
+      expect(sizePos).toBeGreaterThan(utilityTypesPos)
+      expect(sizePos).toBeLessThan(mainTypesPos)
+
+      // Icon should be in main section (after main header)
+      const iconPos = ts.indexOf("type Icon =")
+      expect(iconPos).toBeGreaterThan(mainTypesPos)
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should allow utility schema to be referenced from multiple schemas", () => {
+      const Dimensions = z.object({
+        width: z.number(),
+        height: z.number(),
+      })
+
+      const Image = z.object({
+        type: z.literal("image"),
+        src: z.string(),
+        dimensions: Dimensions,
+      })
+
+      const Video = z.object({
+        type: z.literal("video"),
+        src: z.string(),
+        dimensions: Dimensions,
+      })
+
+      registry.add(Dimensions, { id: "dimensions", utility: true })
+      registry.add(Image, { id: "image" })
+      registry.add(Video, { id: "video" })
+
+      const ts = registryToTypescript(registry)
+
+      // Dimensions should be defined exactly once
+      expect(ts.match(/type Dimensions =/g)).toHaveLength(1)
+
+      // Both Image and Video should reference Dimensions by name
+      expect(ts).toMatch(/dimensions: Dimensions/)
+
+      // Count references - should appear in both Image and Video
+      const dimensionsRefs = ts.match(/dimensions: Dimensions/g)
+      expect(dimensionsRefs).toHaveLength(2)
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should not show section headers when there are no utility schemas", () => {
+      const Icon = z.object({ type: z.literal("icon"), name: z.string() })
+      const Text = z.object({ type: z.literal("text"), content: z.string() })
+
+      registry.add(Icon, { id: "icon" })
+      registry.add(Text, { id: "text" })
+
+      const ts = registryToTypescript(registry)
+
+      // Should not have section headers when no utility schemas
+      expect(ts).not.toContain("// ---")
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should not show section headers when there are only utility schemas", () => {
+      const Color = z.object({ r: z.number(), g: z.number(), b: z.number() })
+      const Size = z.enum(["small", "medium", "large"])
+
+      registry.add(Color, { id: "color", utility: true })
+      registry.add(Size, { id: "size", utility: true })
+
+      const ts = registryToTypescript(registry)
+
+      // Should not have section headers when only utility schemas
+      expect(ts).not.toContain("// ---")
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+  })
+
+  describe("schemaToTypescript", () => {
+    it("should include utility schema dependencies in a separate section", () => {
+      const Color = z.object({
+        r: z.number(),
+        g: z.number(),
+        b: z.number(),
+      })
+
+      const Button = z.object({
+        type: z.literal("button"),
+        label: z.string(),
+        backgroundColor: Color,
+      })
+
+      registry.add(Color, { id: "color", utility: true, description: "RGB color" })
+      registry.add(Button, { id: "button", description: "A button component" })
+
+      const ts = schemaToTypescript(Button, registry, "Button")
+
+      // Both types should be present
+      expect(ts).toContain("type Button =")
+      expect(ts).toContain("type Color =")
+
+      // Should have section headers
+      expect(ts).toContain("// --- Main Types ---")
+      expect(ts).toContain("// --- Utility Types ---")
+
+      // Button should reference Color by name
+      expect(ts).toContain("backgroundColor: Color")
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should handle nested utility schema dependencies", () => {
+      const Color = z.object({ r: z.number(), g: z.number(), b: z.number() })
+      const Border = z.object({ width: z.number(), color: Color })
+      const Card = z.object({
+        type: z.literal("card"),
+        title: z.string(),
+        border: Border,
+      })
+
+      registry.add(Color, { id: "color", utility: true })
+      registry.add(Border, { id: "border", utility: true })
+      registry.add(Card, { id: "card" })
+
+      const ts = schemaToTypescript(Card, registry, "Card")
+
+      // All types should be present
+      expect(ts).toContain("type Card =")
+      expect(ts).toContain("type Border =")
+      expect(ts).toContain("type Color =")
+
+      // Utility types should come before main types
+      const utilityPos = ts.indexOf("// --- Utility Types ---")
+      const mainPos = ts.indexOf("// --- Main Types ---")
+      const colorPos = ts.indexOf("type Color =")
+      const borderPos = ts.indexOf("type Border =")
+      const cardPos = ts.indexOf("type Card =")
+
+      // Utility section comes first
+      expect(utilityPos).toBeLessThan(mainPos)
+
+      // Both utility types should be in utility section (before main)
+      expect(colorPos).toBeGreaterThan(utilityPos)
+      expect(colorPos).toBeLessThan(mainPos)
+      expect(borderPos).toBeGreaterThan(utilityPos)
+      expect(borderPos).toBeLessThan(mainPos)
+
+      // Card should be in main section
+      expect(cardPos).toBeGreaterThan(mainPos)
+
+      // Snapshot
+      expect(ts).toMatchSnapshot()
+    })
   })
 })

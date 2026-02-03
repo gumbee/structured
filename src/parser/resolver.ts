@@ -193,18 +193,57 @@ const tryResolveWithPrimary = (
       return NO_MATCH
     }
 
-    const aliasMap = buildAliasMap(unwrapped)
+    const aliasMapInfo = buildAliasMap(unwrapped)
     const shape = unwrapped.shape
+    const canonicalKeys = new Set(Object.keys(shape))
     const resolved: Record<string, any> = {}
     const canonicalKeysPresent = new Set<string>()
+    const exactMatchedKeys = new Set<string>() // Keys that matched exactly (canonical or alias)
     const schemaFieldsMatched = new Set<string>()
     const keyMapping = new Map<string, string>() // Track alias → canonical mappings
 
-    // First pass: resolve all keys (including aliases) to canonical names
+    // First pass: resolve all keys with exact matching (canonical and aliases)
     // Canonical keys take precedence over aliases
     for (const [key, value] of Object.entries(object)) {
-      const canonicalKey = resolveKey(key, aliasMap)
-      const isCanonical = key === canonicalKey
+      // Skip metadata keys
+      if (key.startsWith("__")) {
+        resolved[key] = value
+        continue
+      }
+
+      // Check if it's a canonical key
+      if (canonicalKeys.has(key)) {
+        resolved[key] = value
+        canonicalKeysPresent.add(key)
+        exactMatchedKeys.add(key)
+        schemaFieldsMatched.add(key)
+        continue
+      }
+
+      // Check for exact alias match
+      const exactAlias = aliasMapInfo.exactAliases.get(key)
+      if (exactAlias !== undefined) {
+        if (!canonicalKeysPresent.has(exactAlias)) {
+          resolved[exactAlias] = value
+          if (progressive) {
+            keyMapping.set(key, exactAlias)
+          }
+        }
+        exactMatchedKeys.add(key)
+        schemaFieldsMatched.add(exactAlias)
+        continue
+      }
+    }
+
+    // Second pass: try flexible matching for keys that didn't match exactly
+    for (const [key, value] of Object.entries(object)) {
+      // Skip if already matched or is metadata
+      if (exactMatchedKeys.has(key) || key.startsWith("__")) {
+        continue
+      }
+
+      // Try flexible matching
+      const canonicalKey = resolveKey(key, aliasMapInfo, canonicalKeys)
 
       // Track key mapping for __done updates (only needed in progressive mode)
       if (progressive && key !== canonicalKey) {
@@ -216,15 +255,13 @@ const tryResolveWithPrimary = (
         schemaFieldsMatched.add(canonicalKey)
       }
 
-      if (isCanonical) {
-        // Canonical key always wins
+      // Only set if canonical key hasn't been set yet
+      if (!canonicalKeysPresent.has(canonicalKey) && !(canonicalKey in resolved)) {
         resolved[canonicalKey] = value
-        canonicalKeysPresent.add(canonicalKey)
-      } else if (!canonicalKeysPresent.has(canonicalKey)) {
-        // Alias only used if canonical key isn't present
-        resolved[canonicalKey] = value
+        if (canonicalKeys.has(canonicalKey)) {
+          canonicalKeysPresent.add(canonicalKey)
+        }
       }
-      // else: alias is ignored because canonical key is present
     }
 
     // If the input object has keys but none of them match any schema field,
@@ -308,9 +345,63 @@ const tryResolveWithPrimary = (
     return object === expected ? expected : NO_MATCH
   }
 
-  // Handle ZodUnion - try each member
+  // Handle ZodEnum with normalizer for flexible matching
+  if (unwrapped instanceof z.ZodEnum) {
+    const meta = getStructuredMeta(unwrapped)
+    const enumValues = unwrapped.options as string[]
+
+    if (meta.normalizer && typeof object === "string") {
+      // Use normalizer for flexible comparison against each enum value
+      const normalizedInput = meta.normalizer(object)
+      for (const value of enumValues) {
+        if (normalizedInput === meta.normalizer(value)) {
+          return value // Return the canonical enum value
+        }
+      }
+      return NO_MATCH
+    }
+
+    // Standard enum validation
+    if (enumValues.includes(object)) {
+      return object
+    }
+    return NO_MATCH
+  }
+
+  // Handle ZodUnion - try each member, with support for flexible matching at union level
   if (unwrapped instanceof z.ZodUnion) {
     const options = unwrapped.options as z.ZodType[]
+    const meta = getStructuredMeta(unwrapped)
+
+    // If the union has a normalizer, apply it to literal/enum children
+    if (meta.normalizer && typeof object === "string") {
+      const normalizedInput = meta.normalizer(object)
+
+      for (const option of options) {
+        const innerUnwrapped = unwrapSchema(option)
+
+        // Try matching against literals
+        if (innerUnwrapped instanceof z.ZodLiteral) {
+          const expected = innerUnwrapped.value
+          if (typeof expected === "string" && normalizedInput === meta.normalizer(expected)) {
+            return expected // Return the canonical literal value
+          }
+        }
+
+        // Try matching against enums
+        if (innerUnwrapped instanceof z.ZodEnum) {
+          const enumValues = innerUnwrapped.options as string[]
+          for (const value of enumValues) {
+            if (normalizedInput === meta.normalizer(value)) {
+              return value // Return the canonical enum value
+            }
+          }
+        }
+      }
+      return NO_MATCH
+    }
+
+    // Standard union resolution - try each member
     for (const option of options) {
       const result = tryResolveWith(object, option, registry, progressive)
       if (result !== undefined) {
@@ -345,7 +436,9 @@ const tryResolveWithPrimary = (
 
     const resolved: any[] = []
     for (let i = 0; i < items.length; i++) {
-      const resolvedElement = tryResolveWith(object[i], items[i], registry, progressive)
+      const itemSchema = items[i]
+      if (!itemSchema) return NO_MATCH
+      const resolvedElement = tryResolveWith(object[i], itemSchema, registry, progressive)
       if (resolvedElement !== undefined) {
         resolved.push(resolvedElement.output)
       } else {

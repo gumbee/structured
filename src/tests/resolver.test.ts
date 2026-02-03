@@ -613,6 +613,187 @@ describe("tryResolveWith", () => {
     })
   })
 
+  describe("flexible alias matching", () => {
+    it("should resolve aliased fields using flexible normalizer", () => {
+      const schema = z.object({
+        home: z
+          .string()
+          .alias(["place_of_living"])
+          .flexible((v) => v.toLowerCase().replaceAll("-", "").replaceAll("_", "")),
+      })
+
+      // Exact alias match
+      const result1 = tryResolveWith({ place_of_living: "NYC" }, schema)
+      expect(result1).toBeDefined()
+      expect(result1?.output).toEqual({ home: "NYC" })
+
+      // Flexible match: camelCase variation
+      const result2 = tryResolveWith({ placeOfLiving: "NYC" }, schema)
+      expect(result2).toBeDefined()
+      expect(result2?.output).toEqual({ home: "NYC" })
+
+      // Flexible match: mixed case and dashes
+      const result3 = tryResolveWith({ "place_Of-living": "NYC" }, schema)
+      expect(result3).toBeDefined()
+      expect(result3?.output).toEqual({ home: "NYC" })
+
+      // Flexible match: all caps
+      const result4 = tryResolveWith({ PLACEOFLIVING: "NYC" }, schema)
+      expect(result4).toBeDefined()
+      expect(result4?.output).toEqual({ home: "NYC" })
+
+      // Canonical key still works
+      const result5 = tryResolveWith({ home: "NYC" }, schema)
+      expect(result5).toBeDefined()
+      expect(result5?.output).toEqual({ home: "NYC" })
+    })
+
+    it("should use flexible normalizer on canonical key as well", () => {
+      const schema = z.object({
+        homeAddress: z.string().flexible((v) => v.toLowerCase().replaceAll("-", "").replaceAll("_", "")),
+      })
+
+      // Canonical match with different casing
+      const result1 = tryResolveWith({ homeaddress: "123 Main St" }, schema)
+      expect(result1).toBeDefined()
+      expect(result1?.output).toEqual({ homeAddress: "123 Main St" })
+
+      // Canonical match with dashes
+      const result2 = tryResolveWith({ "home-address": "123 Main St" }, schema)
+      expect(result2).toBeDefined()
+      expect(result2?.output).toEqual({ homeAddress: "123 Main St" })
+    })
+
+    it("should prefer canonical key over flexible alias match", () => {
+      const schema = z.object({
+        home: z
+          .string()
+          .alias(["place"])
+          .flexible((v) => v.toLowerCase()),
+      })
+
+      // When both canonical and something that would match alias are present, canonical wins
+      const result = tryResolveWith({ home: "Canonical", PLACE: "Alias" }, schema)
+      expect(result).toBeDefined()
+      expect(result?.output.home).toBe("Canonical")
+    })
+
+    it("should prefer exact alias match over flexible match", () => {
+      const schema = z.object({
+        home: z
+          .string()
+          .alias(["place_of_living"])
+          .flexible((v) => v.toLowerCase().replaceAll("_", "")),
+      })
+
+      // When both exact alias and flexible match are present, exact alias wins
+      const result = tryResolveWith({ place_of_living: "Exact", placeofliving: "Flexible" }, schema)
+      expect(result).toBeDefined()
+      expect(result?.output.home).toBe("Exact")
+    })
+
+    it("should handle multiple aliases with flexible matching", () => {
+      const schema = z.object({
+        name: z
+          .string()
+          .alias(["user_name", "display_name"])
+          .flexible((v) => v.toLowerCase().replaceAll("_", "").replaceAll("-", "")),
+      })
+
+      // Flexible match on first alias
+      const result1 = tryResolveWith({ userName: "Alice" }, schema)
+      expect(result1).toBeDefined()
+      expect(result1?.output).toEqual({ name: "Alice" })
+
+      // Flexible match on second alias
+      const result2 = tryResolveWith({ "Display-Name": "Bob" }, schema)
+      expect(result2).toBeDefined()
+      expect(result2?.output).toEqual({ name: "Bob" })
+    })
+
+    it("should handle nested objects with flexible aliases", () => {
+      const schema = z.object({
+        user: z.object({
+          firstName: z
+            .string()
+            .alias(["first_name"])
+            .flexible((v) => v.toLowerCase().replaceAll("_", "").replaceAll("-", "")),
+          lastName: z
+            .string()
+            .alias(["last_name"])
+            .flexible((v) => v.toLowerCase().replaceAll("_", "").replaceAll("-", "")),
+        }),
+      })
+
+      const result = tryResolveWith({ user: { FIRSTNAME: "John", "last-name": "Doe" } }, schema)
+      expect(result).toBeDefined()
+      expect(result?.output).toEqual({ user: { firstName: "John", lastName: "Doe" } })
+    })
+
+    it("should handle flexible matching with optional fields", () => {
+      const schema = z.object({
+        title: z.string(),
+        subtitle: z
+          .string()
+          .optional()
+          .alias(["sub_title"])
+          .flexible((v) => v.toLowerCase().replaceAll("_", "").replaceAll("-", "")),
+      })
+
+      // Optional field provided with flexible match
+      const result1 = tryResolveWith({ title: "Hello", SubTitle: "World" }, schema)
+      expect(result1).toBeDefined()
+      expect(result1?.output).toEqual({ title: "Hello", subtitle: "World" })
+
+      // Optional field not provided
+      const result2 = tryResolveWith({ title: "Hello" }, schema)
+      expect(result2).toBeDefined()
+      expect(result2?.output).toEqual({ title: "Hello" })
+    })
+
+    it("should return undefined when no match with flexible normalizer", () => {
+      const schema = z.object({
+        home: z
+          .string()
+          .alias(["place_of_living"])
+          .flexible((v) => v.toLowerCase().replaceAll("_", "")),
+      })
+
+      // Completely different key that doesn't normalize to match
+      const result = tryResolveWith({ address: "NYC" }, schema)
+      expect(result).toBeUndefined()
+    })
+
+    it("should update __done keys in progressive mode with flexible aliases", () => {
+      const schema = z.object({
+        home: z
+          .string()
+          .alias(["place_of_living"])
+          .flexible((v) => v.toLowerCase().replaceAll("_", "")),
+      })
+
+      // The __done array should use canonical key names, not the input keys
+      const result = resolve({ placeOfLiving: "NYC", __done: ["placeOfLiving"] }, { schema, progressive: true })
+      expect(result.output.__done).toContain("home")
+      expect(result.output.__done).not.toContain("placeOfLiving")
+    })
+
+    it("should handle flexible matching in arrays", () => {
+      const schema = z.array(
+        z.object({
+          itemName: z
+            .string()
+            .alias(["item_name"])
+            .flexible((v) => v.toLowerCase().replaceAll("_", "").replaceAll("-", "")),
+        }),
+      )
+
+      const result = tryResolveWith([{ ItemName: "First" }, { "item-name": "Second" }, { itemName: "Third" }], schema)
+      expect(result).toBeDefined()
+      expect(result?.output).toEqual([{ itemName: "First" }, { itemName: "Second" }, { itemName: "Third" }])
+    })
+  })
+
   describe("enums", () => {
     it("should resolve matching enum values", () => {
       const schema = z.enum(["small", "medium", "large"])
@@ -637,6 +818,145 @@ describe("tryResolveWith", () => {
       const result = tryResolveWith({ sz: "m" }, schema)
       expect(result).toBeDefined()
       expect(result?.output).toEqual({ size: "m" })
+    })
+  })
+
+  describe("flexible matching on enums and unions", () => {
+    describe("enums with flexible", () => {
+      it("should resolve enum values with flexible normalizer", () => {
+        const schema = z.enum(["small", "medium", "large"]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("small", schema)?.output).toBe("small")
+        expect(tryResolveWith("SMALL", schema)?.output).toBe("small")
+        expect(tryResolveWith("Small", schema)?.output).toBe("small")
+        expect(tryResolveWith("MEDIUM", schema)?.output).toBe("medium")
+        expect(tryResolveWith("LARGE", schema)?.output).toBe("large")
+      })
+
+      it("should return undefined for non-matching enum values even with flexible", () => {
+        const schema = z.enum(["small", "medium", "large"]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("tiny", schema)).toBeUndefined()
+        expect(tryResolveWith("XL", schema)).toBeUndefined()
+      })
+
+      it("should resolve enum with complex normalizer", () => {
+        const schema = z.enum(["section-header", "list-item", "code-block"]).flexible((v) =>
+          v
+            .toLowerCase()
+            .replace(/[-_\s]/g, "")
+            .replace(/widget$/i, ""),
+        )
+
+        expect(tryResolveWith("section-header", schema)?.output).toBe("section-header")
+        expect(tryResolveWith("SectionHeader", schema)?.output).toBe("section-header")
+        expect(tryResolveWith("SECTION_HEADER", schema)?.output).toBe("section-header")
+        expect(tryResolveWith("section header", schema)?.output).toBe("section-header")
+        expect(tryResolveWith("ListItem", schema)?.output).toBe("list-item")
+        expect(tryResolveWith("CODE_BLOCK", schema)?.output).toBe("code-block")
+      })
+
+      it("should resolve object with enum field using flexible", () => {
+        const schema = z.object({
+          type: z.enum(["text", "image", "video"]).flexible((v) => v.toLowerCase()),
+        })
+
+        expect(tryResolveWith({ type: "TEXT" }, schema)?.output).toEqual({ type: "text" })
+        expect(tryResolveWith({ type: "Image" }, schema)?.output).toEqual({ type: "image" })
+        expect(tryResolveWith({ type: "VIDEO" }, schema)?.output).toEqual({ type: "video" })
+      })
+    })
+
+    describe("unions of literals with flexible", () => {
+      it("should resolve union of literals with flexible normalizer", () => {
+        const schema = z
+          .union([z.literal("option-a"), z.literal("option-b"), z.literal("option-c")])
+          .flexible((v) => v.toLowerCase().replace(/-/g, ""))
+
+        expect(tryResolveWith("option-a", schema)?.output).toBe("option-a")
+        expect(tryResolveWith("OptionA", schema)?.output).toBe("option-a")
+        expect(tryResolveWith("OPTION-A", schema)?.output).toBe("option-a")
+        expect(tryResolveWith("optionB", schema)?.output).toBe("option-b")
+        expect(tryResolveWith("OPTION_C", schema)).toBeUndefined() // underscore not handled by normalizer
+      })
+
+      it("should resolve union of literals with flexible and return canonical value", () => {
+        const schema = z.union([z.literal("Yes"), z.literal("No"), z.literal("Maybe")]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("yes", schema)?.output).toBe("Yes")
+        expect(tryResolveWith("YES", schema)?.output).toBe("Yes")
+        expect(tryResolveWith("no", schema)?.output).toBe("No")
+        expect(tryResolveWith("NO", schema)?.output).toBe("No")
+        expect(tryResolveWith("maybe", schema)?.output).toBe("Maybe")
+      })
+
+      it("should return undefined for non-matching union of literals", () => {
+        const schema = z.union([z.literal("a"), z.literal("b")]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("c", schema)).toBeUndefined()
+        expect(tryResolveWith("C", schema)).toBeUndefined()
+      })
+    })
+
+    describe("unions of enums with flexible", () => {
+      it("should resolve union of enums with flexible normalizer", () => {
+        const schema = z.union([z.enum(["red", "green", "blue"]), z.enum(["cyan", "magenta", "yellow"])]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("RED", schema)?.output).toBe("red")
+        expect(tryResolveWith("Green", schema)?.output).toBe("green")
+        expect(tryResolveWith("CYAN", schema)?.output).toBe("cyan")
+        expect(tryResolveWith("Magenta", schema)?.output).toBe("magenta")
+      })
+
+      it("should return undefined for non-matching union of enums", () => {
+        const schema = z.union([z.enum(["a", "b"]), z.enum(["c", "d"])]).flexible((v) => v.toLowerCase())
+
+        expect(tryResolveWith("e", schema)).toBeUndefined()
+        expect(tryResolveWith("E", schema)).toBeUndefined()
+      })
+    })
+
+    describe("mixed unions with flexible", () => {
+      it("should resolve union of literal and enum with flexible", () => {
+        const schema = z.union([z.literal("special-value"), z.enum(["normal", "alternate"])]).flexible((v) => v.toLowerCase().replace(/-/g, ""))
+
+        expect(tryResolveWith("special-value", schema)?.output).toBe("special-value")
+        expect(tryResolveWith("SpecialValue", schema)?.output).toBe("special-value")
+        expect(tryResolveWith("NORMAL", schema)?.output).toBe("normal")
+        expect(tryResolveWith("Alternate", schema)?.output).toBe("alternate")
+      })
+
+      it("should resolve discriminated union with flexible enum discriminator", () => {
+        const schema = z.discriminatedUnion("type", [
+          z.object({
+            type: z.literal("text").flexible((v) => v.toLowerCase()),
+            content: z.string(),
+          }),
+          z.object({
+            type: z.literal("image").flexible((v) => v.toLowerCase()),
+            url: z.string(),
+          }),
+        ])
+
+        expect(tryResolveWith({ type: "TEXT", content: "hello" }, schema)?.output).toEqual({ type: "text", content: "hello" })
+        expect(tryResolveWith({ type: "Image", url: "http://example.com" }, schema)?.output).toEqual({ type: "image", url: "http://example.com" })
+      })
+    })
+
+    describe("flexible on object field with enum value", () => {
+      it("should apply flexible to both field name and enum value when chained appropriately", () => {
+        const schema = z.object({
+          widgetType: z
+            .enum(["text-widget", "image-widget"])
+            .flexible((v) => v.toLowerCase().replace(/-/g, ""))
+            .alias(["type", "widget_type"]),
+        })
+
+        // Field alias + enum value normalization
+        expect(tryResolveWith({ type: "TextWidget" }, schema)?.output).toEqual({ widgetType: "text-widget" })
+        expect(tryResolveWith({ widget_type: "IMAGE_WIDGET" }, schema)).toBeUndefined() // underscore not handled
+        expect(tryResolveWith({ widget_type: "ImageWidget" }, schema)?.output).toEqual({ widgetType: "image-widget" })
+      })
     })
   })
 

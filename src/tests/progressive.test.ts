@@ -335,8 +335,8 @@ describe("Progressive Preamble Emission", () => {
         }
       })
 
-      it("should hold back backtick prefixes that could be ```json", () => {
-        const preambleText = "Check this out: `code` and more text "
+      it("should hold back backtick prefixes that could be code block signature", () => {
+        const preambleText = "Check this out: `code` and more text\n"
         const json = { data: true }
         const input = preambleText + JSON.stringify(json)
         const preambleChunks: string[] = []
@@ -351,7 +351,7 @@ describe("Progressive Preamble Emission", () => {
         }
         parser.finish()
 
-        // Full preamble should be emitted (backticks that aren't ```json)
+        // Full preamble should be emitted (backticks that aren't code block signature)
         expect(preambleChunks.join("")).toBe(preambleText)
         expect(clean(parser.value)).toEqual(json)
 
@@ -360,10 +360,10 @@ describe("Progressive Preamble Emission", () => {
         expect(preambleChunks.length).toBeGreaterThanOrEqual(expectedMinChunks)
       })
 
-      it("should work with ```json code fence", () => {
+      it("should work with code block signature", () => {
         const preambleText = "Here is the code:\n"
         const json = { fenced: true }
-        const input = preambleText + "```json\n" + JSON.stringify(json) + "\n```"
+        const input = preambleText + "```structured\n" + JSON.stringify(json) + "\n```"
         const preambleChunks: string[] = []
 
         const parser = new StructuredJson({
@@ -376,7 +376,7 @@ describe("Progressive Preamble Emission", () => {
         }
         parser.finish()
 
-        // Preamble should be text before ```json (not including the fence)
+        // Preamble should be text before code block signature (not including the fence)
         expect(preambleChunks.join("")).toBe(preambleText)
         expect(clean(parser.value)).toEqual(json)
 
@@ -596,7 +596,7 @@ describe("Progressive Preamble Emission", () => {
 
     it("should match snapshot for code fence with chunk size 3", () => {
       const preambleText = "Response:\n"
-      const input = preambleText + '```json\n{"fenced": true}\n```'
+      const input = preambleText + '```structured\n{"fenced": true}\n```'
       const preambleChunks: string[] = []
 
       const parser = new StructuredJson({

@@ -194,61 +194,143 @@ export function hasStructuredMeta(schema: z.ZodType): boolean {
 }
 
 /**
- * Collect aliases from all wrapper layers of a schema.
+ * Information collected from a field schema about aliases and flexible matching.
+ */
+interface FieldAliasInfo {
+  aliases: Set<string>
+  normalizer?: (value: any) => any
+}
+
+/**
+ * Collect aliases and normalizer from all wrapper layers of a schema.
  * This handles cases like z.string().optional().alias(['x']).default('y')
  * where the alias is on an intermediate wrapper.
  * @param schema - The Zod schema that may be wrapped
- * @param aliases - Set to collect aliases into
+ * @returns Object containing aliases and optional normalizer
  */
-function collectAliasesFromAllLayers(schema: z.ZodType, aliases: Set<string>): void {
-  // Collect aliases from this layer
-  const meta = getStructuredMeta(schema)
-  for (const alias of meta.aliases ?? []) {
-    aliases.add(alias)
+function collectFieldInfoFromAllLayers(schema: z.ZodType): FieldAliasInfo {
+  const aliases = new Set<string>()
+  let normalizer: ((value: any) => any) | undefined
+
+  function collect(s: z.ZodType): void {
+    // Collect meta from this layer
+    const meta = getStructuredMeta(s)
+    for (const alias of meta.aliases ?? []) {
+      aliases.add(alias)
+    }
+    // Capture normalizer if present (first one found wins)
+    if (meta.normalizer && !normalizer) {
+      normalizer = meta.normalizer
+    }
+
+    // Recurse into wrapped schemas
+    if (s instanceof z.ZodOptional) {
+      collect((s as z.ZodOptional<z.ZodType>).unwrap())
+    } else if (s instanceof z.ZodNullable) {
+      collect((s as z.ZodNullable<z.ZodType>).unwrap())
+    } else if (s instanceof z.ZodDefault) {
+      collect((s as z.ZodDefault<z.ZodType>).removeDefault())
+    }
   }
 
-  // Recurse into wrapped schemas
-  if (schema instanceof z.ZodOptional) {
-    collectAliasesFromAllLayers((schema as z.ZodOptional<z.ZodType>).unwrap(), aliases)
-  } else if (schema instanceof z.ZodNullable) {
-    collectAliasesFromAllLayers((schema as z.ZodNullable<z.ZodType>).unwrap(), aliases)
-  } else if (schema instanceof z.ZodDefault) {
-    collectAliasesFromAllLayers((schema as z.ZodDefault<z.ZodType>).removeDefault(), aliases)
-  }
+  collect(schema)
+  return { aliases, normalizer }
+}
+
+/**
+ * Extended alias map that includes flexible matching information.
+ */
+export interface AliasMapInfo {
+  /** Exact alias to canonical key map */
+  exactAliases: Map<string, string>
+  /** Per-field normalizer and canonical/alias keys for flexible matching */
+  flexibleFields: Map<string, { canonical: string; allKeys: string[]; normalizer: (value: any) => any }>
 }
 
 /**
  * Build an alias map from an object schema's shape
- * Returns a map of alias -> canonical field name
+ * Returns a map of alias -> canonical field name, plus flexible matching info
  * @param schema - The ZodObject schema
- * @returns Map of alias to canonical field name
+ * @returns AliasMapInfo with exact aliases and flexible field info
  */
-export function buildAliasMap(schema: z.ZodObject<any>): Map<string, string> {
-  const map = new Map<string, string>()
+export function buildAliasMap(schema: z.ZodObject<any>): AliasMapInfo {
+  const exactAliases = new Map<string, string>()
+  const flexibleFields = new Map<string, { canonical: string; allKeys: string[]; normalizer: (value: any) => any }>()
   const shape = schema.shape
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
     if (fieldSchema instanceof z.ZodType) {
-      // Collect aliases from all wrapper layers
-      const aliases = new Set<string>()
-      collectAliasesFromAllLayers(fieldSchema as z.ZodType, aliases)
-      for (const alias of aliases) {
-        map.set(alias, key)
+      // Collect aliases and normalizer from all wrapper layers
+      const fieldInfo = collectFieldInfoFromAllLayers(fieldSchema as z.ZodType)
+
+      // Add exact aliases
+      for (const alias of fieldInfo.aliases) {
+        exactAliases.set(alias, key)
+      }
+
+      // If there's a normalizer, store for flexible matching
+      if (fieldInfo.normalizer) {
+        // All keys that can match this field (canonical + aliases)
+        const allKeys = [key, ...fieldInfo.aliases]
+        // Store with normalized canonical key as lookup
+        const normalizedCanonical = fieldInfo.normalizer(key)
+        flexibleFields.set(normalizedCanonical, {
+          canonical: key,
+          allKeys,
+          normalizer: fieldInfo.normalizer,
+        })
+        // Also store normalized aliases for lookup
+        for (const alias of fieldInfo.aliases) {
+          const normalizedAlias = fieldInfo.normalizer(alias)
+          if (normalizedAlias !== normalizedCanonical) {
+            flexibleFields.set(normalizedAlias, {
+              canonical: key,
+              allKeys,
+              normalizer: fieldInfo.normalizer,
+            })
+          }
+        }
       }
     }
   }
 
-  return map
+  return { exactAliases, flexibleFields }
 }
 
 /**
- * Resolve a key to its canonical form using an alias map
- * @param key - The key to resolve (may be an alias)
- * @param aliasMap - Map of alias -> canonical key
+ * Resolve a key to its canonical form using an alias map with flexible matching.
+ * Priority order:
+ * 1. Key is already canonical (no change)
+ * 2. Exact alias match
+ * 3. Flexible match using normalizer
+ *
+ * @param key - The key to resolve (may be an alias or flexible variant)
+ * @param aliasMapInfo - Extended alias map with flexible matching info
+ * @param canonicalKeys - Set of canonical keys in the schema (for checking if key is already canonical)
  * @returns The canonical key
  */
-export function resolveKey(key: string, aliasMap: Map<string, string>): string {
-  return aliasMap.get(key) ?? key
+export function resolveKey(key: string, aliasMapInfo: AliasMapInfo, canonicalKeys?: Set<string>): string {
+  // 1. Check if key is already canonical
+  if (canonicalKeys?.has(key)) {
+    return key
+  }
+
+  // 2. Try exact alias match
+  const exactMatch = aliasMapInfo.exactAliases.get(key)
+  if (exactMatch !== undefined) {
+    return exactMatch
+  }
+
+  // 3. Try flexible match - normalize the input key and look it up
+  for (const [normalizedKey, info] of aliasMapInfo.flexibleFields) {
+    const normalizedInput = info.normalizer(key)
+    if (normalizedInput === normalizedKey) {
+      return info.canonical
+    }
+  }
+
+  // No match found, return as-is
+  return key
 }
 
 /**
