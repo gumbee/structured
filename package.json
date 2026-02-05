@@ -71,9 +71,12 @@
     "test:update": "vitest --config vitest.node.config.js --run -u",
     "lint": "eslint src/",
     "lint:fix": "eslint --fix src/",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "changeset": "changeset",
+    "version": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@eslint/js": "^9.39.1",
     "bunup": "^0.16.10",
     "eslint": "^9.17.0",
