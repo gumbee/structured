@@ -2,6 +2,24 @@
   "name": "@gumbee/structured",
   "version": "1.0.0",
   "description": "A schema-aware progressive JSON parser that builds structured objects from streamed text",
+  "author": "Gumbee <mugeeb.hassan@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/gumbee/structured#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gumbee/structured.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gumbee/structured/issues"
+  },
+  "keywords": [
+    "gumbee",
+    "structured",
+    "json",
+    "parser",
+    "streaming",
+    "schema"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -60,7 +78,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "bunup --dts",
