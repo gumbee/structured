@@ -572,6 +572,19 @@ describe("registryToTypescript", () => {
     expect(ts).toMatchSnapshot()
   })
 
+  it("should render rules arrays as markdown list items in JSDoc", () => {
+    registry.add(z.string(), {
+      id: "code",
+      rules: ["Must be alphanumeric", "Must be 3-12 characters"],
+    })
+
+    const ts = registryToTypescript(registry)
+
+    expect(ts).toContain("Rules:")
+    expect(ts).toContain(" * - Must be alphanumeric")
+    expect(ts).toContain(" * - Must be 3-12 characters")
+  })
+
   it("should convert PascalCase type names", () => {
     registry.add(z.string(), { id: "my-widget" })
     registry.add(z.number(), { id: "another_widget" })
@@ -1096,6 +1109,312 @@ describe("Utility Schemas", () => {
 
       // Snapshot
       expect(ts).toMatchSnapshot()
+    })
+  })
+})
+
+describe("Wrapped utility schema resolution", () => {
+  const normalizeType = (v: string) => v.toLowerCase().replaceAll("-", "").replaceAll("_", "")
+
+  let registry: DescribeRegistry
+
+  beforeEach(() => {
+    registry = new DescribeRegistry()
+  })
+
+  describe("registryToTypescript", () => {
+    it("should reference utility enum by name when used with .alias().flexible().describe()", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs", "head"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.alias(["area", "bodyArea"]).flexible(normalizeType).describe("The affected body part"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom" })
+
+      const ts = registryToTypescript(registry)
+
+      // BodyPart should be a named type
+      expect(ts).toContain("type BodyPart =")
+      // Symptom should reference BodyPart by name, not inline the enum
+      expect(ts).toContain("bodyPart: BodyPart")
+      expect(ts).not.toMatch(/bodyPart: "chest"/)
+
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should reference utility enum by name when used with only .describe()", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs", "head"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.describe("The affected body part"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom" })
+
+      const ts = registryToTypescript(registry)
+
+      expect(ts).toContain("type BodyPart =")
+      expect(ts).toContain("bodyPart: BodyPart")
+      expect(ts).not.toMatch(/bodyPart: "chest"/)
+
+      expect(ts).toMatchSnapshot()
+    })
+  })
+
+  describe("schemaToTypescript", () => {
+    it("should auto-detect utility type dependency without always: true", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.alias(["area"]).flexible(normalizeType).describe("The affected area"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom" })
+
+      const ts = schemaToTypescript(Symptom, registry, "Symptom")
+
+      // Both types should be present (BodyPart auto-detected, not via always: true)
+      expect(ts).toContain("type BodyPart =")
+      expect(ts).toContain("type Symptom =")
+      // BodyPart should be referenced by name
+      expect(ts).toContain("bodyPart: BodyPart")
+
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should detect nested utility dependencies through wrapper chains", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.alias(["area"]).flexible(normalizeType).describe("The body part"),
+      })
+
+      const SymptomList = z.object({
+        title: z.string().optional(),
+        symptoms: Symptom.array().describe("List of symptoms"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom", utility: true })
+      registry.add(SymptomList, { id: "SymptomList" })
+
+      const ts = schemaToTypescript(SymptomList, registry, "SymptomList")
+
+      // All types should be present
+      expect(ts).toContain("type BodyPart =")
+      expect(ts).toContain("type Symptom =")
+      expect(ts).toContain("type SymptomList =")
+
+      // References should use type names
+      expect(ts).toContain("bodyPart: BodyPart")
+      expect(ts).toContain("symptoms: Symptom[]")
+
+      expect(ts).toMatchSnapshot()
+    })
+
+    it("should reference utility type inside .extend()-ed schema fields", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.alias(["area"]).flexible(normalizeType).describe("The body part"),
+      })
+
+      const ExtendedSymptomList = z.object({
+        symptoms: Symptom.extend({
+          severity: z.number().describe("Severity level"),
+        })
+          .array()
+          .describe("Extended symptoms"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom", utility: true })
+      registry.add(ExtendedSymptomList, { id: "ExtendedSymptomList" })
+
+      const ts = schemaToTypescript(ExtendedSymptomList, registry, "ExtendedSymptomList")
+
+      // BodyPart utility type should still be detected and referenced
+      expect(ts).toContain("type BodyPart =")
+      expect(ts).toContain("bodyPart: BodyPart")
+
+      expect(ts).toMatchSnapshot()
+    })
+  })
+
+  describe("collectSchemaDependencies", () => {
+    it("should detect utility type dependency through wrapped field schemas", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs"])
+
+      const Symptom = z.object({
+        name: z.string(),
+        bodyPart: BodyPart.alias(["area"]).flexible(normalizeType).describe("The affected body part"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom" })
+
+      const deps = collectSchemaDependencies(["Symptom"], registry)
+
+      expect(deps).toContain("Symptom")
+      expect(deps).toContain("BodyPart")
+    })
+
+    it("should detect utility type dependency through .describe()-only wrapper", () => {
+      const BodyPart = z.enum(["chest", "arms", "legs"])
+
+      const Symptom = z.object({
+        bodyPart: BodyPart.describe("The affected body part"),
+      })
+
+      registry.add(BodyPart, { id: "BodyPart", utility: true })
+      registry.add(Symptom, { id: "Symptom" })
+
+      const deps = collectSchemaDependencies(["Symptom"], registry)
+
+      expect(deps).toContain("Symptom")
+      expect(deps).toContain("BodyPart")
+    })
+  })
+
+  describe("schema-level metadata (.rules() and .describe())", () => {
+    it("should pick up .describe() from schema", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .describe("An icon widget")
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.description).toBe("An icon widget")
+    })
+
+    it("should pick up .rules() from schema", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .rules("Icon name must be a valid Material icon name")
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.rules).toBe("Icon name must be a valid Material icon name")
+    })
+
+    it("should pick up .rules() arrays from schema", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .rules(["Must have a valid name", "Must use approved icon set"])
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.rules).toEqual(["Must have a valid name", "Must use approved icon set"])
+    })
+
+    it("should pick up both .rules() and .describe() together", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .describe("An icon widget")
+        .rules("Icon name must be a valid Material icon name")
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.description).toBe("An icon widget")
+      expect(meta?.rules).toBe("Icon name must be a valid Material icon name")
+    })
+
+    it("should let explicit DescribeMeta override schema-level description", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .describe("Schema-level description")
+
+      registry.add(schema, { id: "icon", description: "Explicit description" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.description).toBe("Explicit description")
+    })
+
+    it("should let explicit DescribeMeta override schema-level rules", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .rules("Schema-level rules")
+
+      registry.add(schema, { id: "icon", rules: "Explicit rules" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.rules).toBe("Explicit rules")
+    })
+
+    it("should include schema-level metadata in toTypescript() JSDoc output", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string(),
+        })
+        .describe("An icon widget")
+        .rules("Icon name must be a valid Material icon name")
+
+      registry.add(schema, { id: "icon" })
+
+      const ts = registry.toTypescript()
+      expect(ts).toContain("An icon widget")
+      expect(ts).toContain("Icon name must be a valid Material icon name")
+    })
+
+    it("should work when chained with other methods like .alias()", () => {
+      const schema = z
+        .object({
+          type: z.literal("icon"),
+          name: z.string().alias(["label"]),
+        })
+        .describe("An icon widget")
+        .rules("Must have a valid name")
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.description).toBe("An icon widget")
+      expect(meta?.rules).toBe("Must have a valid name")
+    })
+
+    it("should not set description/rules when not provided on schema", () => {
+      const schema = z.object({
+        type: z.literal("icon"),
+        name: z.string(),
+      })
+
+      registry.add(schema, { id: "icon" })
+
+      const meta = registry.getMeta("icon")
+      expect(meta?.description).toBeUndefined()
+      expect(meta?.rules).toBeUndefined()
     })
   })
 })

@@ -204,6 +204,79 @@ type Button = {
 }"
 `;
 
+exports[`Wrapped utility schema resolution > registryToTypescript > should reference utility enum by name when used with .alias().flexible().describe() 1`] = `
+"// --- Utility Types ---
+
+type BodyPart = "chest" | "arms" | "legs" | "head"
+
+// --- Main Types ---
+
+type Symptom = {
+  name: string
+  bodyPart: BodyPart // The affected body part
+}"
+`;
+
+exports[`Wrapped utility schema resolution > registryToTypescript > should reference utility enum by name when used with only .describe() 1`] = `
+"// --- Utility Types ---
+
+type BodyPart = "chest" | "arms" | "legs" | "head"
+
+// --- Main Types ---
+
+type Symptom = {
+  name: string
+  bodyPart: BodyPart // The affected body part
+}"
+`;
+
+exports[`Wrapped utility schema resolution > schemaToTypescript > should auto-detect utility type dependency without always: true 1`] = `
+"// --- Utility Types ---
+
+type BodyPart = "chest" | "arms" | "legs"
+
+// --- Main Types ---
+
+type Symptom = {
+  name: string
+  bodyPart: BodyPart // The affected area
+}"
+`;
+
+exports[`Wrapped utility schema resolution > schemaToTypescript > should detect nested utility dependencies through wrapper chains 1`] = `
+"// --- Utility Types ---
+
+type BodyPart = "chest" | "arms" | "legs"
+
+type Symptom = {
+  name: string
+  bodyPart: BodyPart // The body part
+}
+
+// --- Main Types ---
+
+type SymptomList = {
+  title: string | undefined
+  symptoms: Symptom[] // List of symptoms
+}"
+`;
+
+exports[`Wrapped utility schema resolution > schemaToTypescript > should reference utility type inside .extend()-ed schema fields 1`] = `
+"// --- Utility Types ---
+
+type BodyPart = "chest" | "arms" | "legs"
+
+// --- Main Types ---
+
+type ExtendedSymptomList = {
+  symptoms: {
+    name: string
+    bodyPart: BodyPart // The body part
+    severity: number // Severity level
+  }[] // Extended symptoms
+}"
+`;
+
 exports[`registryToTypescript > should convert PascalCase type names 1`] = `
 "type MyWidget = string
 

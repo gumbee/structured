@@ -1,6 +1,7 @@
 import * as z from "zod"
 import type { DescribableSchema } from "@/describe/types"
 import type { DescribeRegistry } from "@/describe/registry"
+import { getSourceSchema } from "@/schema/meta"
 
 /**
  * Build lookup maps from schema instances to their registry IDs
@@ -18,6 +19,36 @@ function buildSchemaMaps(registry: DescribeRegistry): {
 }
 
 /**
+ * Resolve a schema to its registered ID, handling clones from .alias()/.flexible()/.describe().
+ */
+function resolveSchemaId(node: DescribableSchema, schemaToId: Map<DescribableSchema, string>): string | undefined {
+  const directId = schemaToId.get(node)
+  if (directId) return directId
+
+  if (node instanceof z.ZodType) {
+    const source = getSourceSchema(node)
+    if (source) {
+      const sourceId = schemaToId.get(source)
+      if (sourceId) return sourceId
+    }
+
+    if (node instanceof z.ZodEnum) {
+      const sOptions = (node as any).options as (string | number)[]
+      for (const [registered, id] of schemaToId) {
+        if (registered instanceof z.ZodEnum) {
+          const regOptions = (registered as any).options as (string | number)[]
+          if (sOptions.length === regOptions.length && sOptions.every((v, i) => v === regOptions[i])) {
+            return id
+          }
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
+/**
  * Collect direct dependencies from a schema while ignoring z.lazy branches
  */
 function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<DescribableSchema, string>): Set<string> {
@@ -25,7 +56,7 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
   const seen = new Set<any>()
 
   const enqueueIfKnown = (node: DescribableSchema) => {
-    const id = schemaToId.get(node)
+    const id = resolveSchemaId(node, schemaToId)
     if (id) deps.add(id)
   }
 
@@ -34,8 +65,8 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
     if (seen.has(node)) return
     seen.add(node)
 
-    // Check if this is a registered schema
-    const knownId = schemaToId.get(node)
+    // Check if this is a registered schema (direct or via source tracking)
+    const knownId = resolveSchemaId(node, schemaToId)
     if (knownId) {
       deps.add(knownId)
     }
@@ -51,8 +82,7 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
     // Unwrap wrappers and traverse inner schemas
     if (zodNode instanceof z.ZodOptional) {
       const innerType = (zodNode as z.ZodOptional<z.ZodTypeAny>).unwrap()
-      // Check if inner type is registered before traversing
-      const innerId = schemaToId.get(innerType)
+      const innerId = resolveSchemaId(innerType, schemaToId)
       if (innerId) {
         deps.add(innerId)
       }
@@ -62,7 +92,7 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
 
     if (zodNode instanceof z.ZodNullable) {
       const innerType = (zodNode as z.ZodNullable<z.ZodTypeAny>).unwrap()
-      const innerId = schemaToId.get(innerType)
+      const innerId = resolveSchemaId(innerType, schemaToId)
       if (innerId) {
         deps.add(innerId)
       }
@@ -73,7 +103,7 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
     if (zodNode instanceof z.ZodReadonly) {
       const innerType = (zodNode as any)._def?.innerType
       if (innerType) {
-        const innerId = schemaToId.get(innerType)
+        const innerId = resolveSchemaId(innerType, schemaToId)
         if (innerId) {
           deps.add(innerId)
         }
@@ -95,10 +125,9 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
     }
 
     if (zodNode instanceof z.ZodArray) {
-      // In Zod 4, element type is accessed via .element property
       const elementType = (zodNode as z.ZodArray<z.ZodTypeAny>).element
       if (elementType) {
-        const elementId = schemaToId.get(elementType)
+        const elementId = resolveSchemaId(elementType, schemaToId)
         if (elementId) {
           deps.add(elementId)
         }
@@ -159,12 +188,10 @@ function collectDirectDependencies(root: DescribableSchema, schemaToId: Map<Desc
     }
 
     if (zodNode instanceof z.ZodObject) {
-      // In Zod 4, shape is accessed via .shape property directly
       const shape = (zodNode as z.ZodObject<any>).shape
       if (shape && typeof shape === "object") {
         for (const child of Object.values(shape)) {
-          // Check if this child schema is registered
-          const childId = schemaToId.get(child as DescribableSchema)
+          const childId = resolveSchemaId(child as DescribableSchema, schemaToId)
           if (childId) {
             deps.add(childId)
           }

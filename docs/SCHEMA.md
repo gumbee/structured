@@ -80,6 +80,22 @@ const SectionType = z.literal("section-header").flexible((v) => v.toLowerCase().
 // "section-header", "Section-Header", "SectionHeader", "SECTION_HEADER"
 ```
 
+### .rules()
+
+Attach registry-level rules/constraints to a schema. These rules are consumed by `DescribeRegistry` and included in generated JSDoc when using `registryToTypescript()` / `schemaToTypescript()`.
+
+```typescript
+const ChartWidget = z
+  .object({
+    type: z.literal("line_chart"),
+    data: z.array(z.object({ x: z.string(), y: z.number() })),
+  })
+  .describe("Display a simple line chart with data points.")
+  .rules("Always explain the chart in adjacent text.")
+```
+
+Note: use Zod's native `.describe(...)` for schema descriptions. `DescribeRegistry` reads that description automatically as schema metadata.
+
 ### dynamic()
 
 Create a dynamic schema that resolves from a registry at runtime. Acts like `z.any()` for validation but enables schema-based transformations when a registry is provided.

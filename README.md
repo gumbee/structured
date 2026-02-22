@@ -67,7 +67,7 @@ The package provides multiple entry points for different use cases:
 
 ## Configuration
 
-By default, `StructuredJson` enables `skipPreamble` which automatically skips text before JSON content (e.g., markdown code fences, explanatory text). The parser looks for `{`, `[`, or ` ```json` to start parsing. Set `skipPreamble: false` for direct JSON parsing.
+By default, `StructuredJson` enables `skipPreamble` which automatically skips text before JSON content (e.g., markdown code fences, explanatory text). The parser looks for `{`, `[`, or ` ```structured` to start parsing (code fence language configurable). Set `skipPreamble: false` for direct JSON parsing.
 
 ## Development
 

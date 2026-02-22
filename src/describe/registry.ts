@@ -1,6 +1,7 @@
 import type { DescribeMeta, DescribableSchema, RegistryEntry } from "@/describe/types"
 import { registryToTypescript } from "@/describe/typescript"
 import { collectSchemaDependencies } from "@/describe/dependencies"
+import { getRegistryMeta } from "@/schema/meta"
 
 /**
  * A custom registry for registering and describing schemas.
@@ -21,15 +22,21 @@ export class DescribeRegistry {
       throw new Error("Schema metadata must include an id")
     }
 
-    this._schemas.set(meta.id, { schema, meta })
-    this._schemaToId.set(schema, meta.id)
+    const schemaLevel = getRegistryMeta(schema)
+    const mergedMeta: DescribeMeta = {
+      ...meta,
+      description: meta.description ?? schemaLevel.description,
+      rules: meta.rules ?? schemaLevel.rules,
+    }
+
+    this._schemas.set(mergedMeta.id, { schema, meta: mergedMeta })
+    this._schemaToId.set(schema, mergedMeta.id)
 
     // Also map aliases to the same ID for lookup
-    if (meta.aliases) {
-      for (const alias of meta.aliases) {
-        // Don't overwrite existing schemas with aliases
+    if (mergedMeta.aliases) {
+      for (const alias of mergedMeta.aliases) {
         if (!this._schemas.has(alias)) {
-          this._schemas.set(alias, { schema, meta })
+          this._schemas.set(alias, { schema, meta: mergedMeta })
         }
       }
     }

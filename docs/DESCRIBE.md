@@ -24,14 +24,16 @@ const registry = new DescribeRegistry()
 **Adding Schemas**
 
 ```typescript
-const UserSchema = z.object({
-  name: z.string(),
-  email: z.string(),
-})
+const UserSchema = z
+  .object({
+    name: z.string(),
+    email: z.string(),
+  })
+  .describe("A user in the system")
+  .rules("Always include both name and email")
 
 registry.add(UserSchema, {
   id: "user",
-  description: "A user in the system",
   aliases: ["person", "account"],
 })
 ```
@@ -65,8 +67,18 @@ interface DescribeMeta {
 
 Register a schema with metadata. Returns `this` for chaining.
 
+When available, `description` and `rules` are read from the schema itself:
+
+- `description` from Zod's native `.describe(...)`
+- `rules` from Structured's `.rules(...)`
+
+Explicit values passed in `meta` always take precedence.
+
 ```typescript
-registry.add(UserSchema, { id: "user", description: "A user" }).add(PostSchema, { id: "post", description: "A blog post" })
+const UserSchema = z.object({ name: z.string() }).describe("A user")
+const PostSchema = z.object({ title: z.string() }).describe("A blog post")
+
+registry.add(UserSchema, { id: "user" }).add(PostSchema, { id: "post" })
 ```
 
 **`get(id)`**
@@ -231,10 +243,10 @@ const customOutput = schemaToTypescript(z.string(), undefined, "MyType")
 // "type MyType = string\n\n"
 
 // With registry - includes referenced types as standalone definitions
-const Icon = z.object({ type: z.literal("icon"), name: z.string() })
+const Icon = z.object({ type: z.literal("icon"), name: z.string() }).describe("An icon")
 const Button = z.object({ label: z.string(), icon: Icon })
 
-registry.add(Icon, { id: "icon", description: "An icon" })
+registry.add(Icon, { id: "icon" })
 registry.add(Button, { id: "button" })
 
 const fullOutput = schemaToTypescript(Button, registry, "Button")
@@ -290,19 +302,23 @@ import { StructuredJson, dynamic, clean } from "@gumbee/structured"
 import { DescribeRegistry } from "@gumbee/structured/describe"
 
 // Define and register schemas
-const TextWidget = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-})
+const TextWidget = z
+  .object({
+    type: z.literal("text"),
+    text: z.string(),
+  })
+  .describe("Text content")
 
-const ImageWidget = z.object({
-  type: z.literal("image"),
-  src: z.string(),
-})
+const ImageWidget = z
+  .object({
+    type: z.literal("image"),
+    src: z.string(),
+  })
+  .describe("An image")
 
 const registry = new DescribeRegistry()
-registry.add(TextWidget, { id: "text", description: "Text content" })
-registry.add(ImageWidget, { id: "image", description: "An image" })
+registry.add(TextWidget, { id: "text" })
+registry.add(ImageWidget, { id: "image" })
 
 // Parse with dynamic resolution
 const parser = new StructuredJson({
@@ -323,11 +339,16 @@ Generate TypeScript definitions to include in LLM prompts:
 
 ```typescript
 const widgetRegistry = new DescribeRegistry()
-widgetRegistry.add(TextWidget, {
-  id: "text",
-  description: "A text widget for displaying content",
-  rules: "Use for paragraphs, headings, and inline text",
-})
+
+const TextWidget = z
+  .object({
+    type: z.literal("text"),
+    text: z.string(),
+  })
+  .describe("A text widget for displaying content")
+  .rules("Use for paragraphs, headings, and inline text")
+
+widgetRegistry.add(TextWidget, { id: "text" })
 
 const prompt = `
 You are generating UI widgets. Available types:

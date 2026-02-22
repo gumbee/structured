@@ -19,6 +19,7 @@ import {
 } from "zod"
 import type { DescribableSchema, DescribeMeta } from "@/describe/types"
 import type { DescribeRegistry } from "@/describe/registry"
+import { getSourceSchema } from "@/schema/meta"
 
 /**
  * Generate indentation spaces
@@ -46,6 +47,40 @@ function buildZodToIdMap(registry: DescribeRegistry | undefined): Map<ZodType, s
     }
   }
   return zodToId
+}
+
+/**
+ * Resolve a schema to its registered ID, handling clones created by
+ * .alias(), .flexible(), and .describe() which produce new instances.
+ *
+ * Strategy:
+ * 1. Direct instance match in zodToId
+ * 2. Follow _source from structured meta (set by .alias()/.flexible())
+ * 3. Fallback: for ZodEnum, compare option values (handles .describe()-only clones)
+ */
+function resolveSchemaId(s: ZodType, zodToId: Map<ZodType, string>): string | undefined {
+  const directId = zodToId.get(s)
+  if (directId) return directId
+
+  const source = getSourceSchema(s) as ZodType | undefined
+  if (source) {
+    const sourceId = zodToId.get(source)
+    if (sourceId) return sourceId
+  }
+
+  if (s instanceof ZodEnum) {
+    const sOptions = (s as any).options as (string | number)[]
+    for (const [registered, id] of zodToId) {
+      if (registered instanceof ZodEnum) {
+        const regOptions = (registered as any).options as (string | number)[]
+        if (sOptions.length === regOptions.length && sOptions.every((v, i) => v === regOptions[i])) {
+          return id
+        }
+      }
+    }
+  }
+
+  return undefined
 }
 
 /**
@@ -82,9 +117,8 @@ function toTs(
     throw new Error(`Provided schema is not a valid Zod type: ${s}`)
   }
 
-  // Check if this schema is registered in the registry
-  const schemaId = zodToId.get(s)
-  const meta = schemaId && registry ? registry.getMeta(schemaId) : undefined
+  // Check if this schema is registered in the registry (direct or via source tracking)
+  const schemaId = resolveSchemaId(s, zodToId)
 
   // If schema is not in registry, skip it
   if (schemaId && registry && !registry.has(schemaId)) {
@@ -134,8 +168,8 @@ function toTs(
   if (s instanceof ZodOptional) {
     const unwrapped = (s as ZodOptional<ZodType>).unwrap()
     if (!unwrapped) return undefined
-    // Check if inner type is registered
-    const innerId = zodToId.get(unwrapped)
+    // Check if inner type is registered (direct or via source tracking)
+    const innerId = resolveSchemaId(unwrapped, zodToId)
     if (innerId && registry) {
       const innerEntry = registry.get(innerId)
       if (innerEntry) {
@@ -147,8 +181,8 @@ function toTs(
   if (s instanceof ZodNullable) {
     const unwrapped = (s as ZodNullable<ZodType>).unwrap()
     if (!unwrapped) return undefined
-    // Check if inner type is registered
-    const innerId = zodToId.get(unwrapped)
+    // Check if inner type is registered (direct or via source tracking)
+    const innerId = resolveSchemaId(unwrapped, zodToId)
     if (innerId && registry) {
       const innerEntry = registry.get(innerId)
       if (innerEntry) {
@@ -231,7 +265,14 @@ function formatJsDoc(meta: Partial<DescribeMeta> | undefined): string {
   }
 
   if (meta.rules) {
-    result += ` * Rules: ${meta.rules.split("\n").join("\n * ")}\n`
+    if (Array.isArray(meta.rules)) {
+      result += " * Rules:\n"
+      for (const rule of meta.rules) {
+        result += ` * - ${rule.split("\n").join("\n *   ")}\n`
+      }
+    } else {
+      result += ` * Rules: ${meta.rules.split("\n").join("\n * ")}\n`
+    }
   }
 
   result += " */\n"

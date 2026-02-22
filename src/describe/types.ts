@@ -17,7 +17,7 @@ export interface DescribeMeta {
   /** If true, this is a utility type (referenced but not exported as top-level) */
   utility?: boolean
   /** Additional rules/constraints for LLM prompts */
-  rules?: string
+  rules?: string | string[]
 }
 
 /**

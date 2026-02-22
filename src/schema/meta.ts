@@ -63,6 +63,10 @@ export interface StructuredMeta<T = any> {
    * Only schemas where this function returns true will be tried.
    */
   dynamicFilter?: DynamicFilter
+  /** Additional rules/constraints for LLM prompts */
+  registryRules?: string | string[]
+  /** @internal Original schema before alias/flexible wrapping, used for registry resolution */
+  _source?: z.ZodType
 }
 
 /**
@@ -109,6 +113,13 @@ declare module "zod" {
      * z.literal('section-header').flexible(v => v.toLowerCase().replaceAll('-', ''))
      */
     flexible(normalizer: (value: any) => any): this
+
+    /**
+     * Set registry-level rules/constraints for this schema.
+     * These appear in generated JSDoc and are useful for guiding LLM behavior.
+     * @param text - The rules text
+     */
+    rules(text: string | string[]): this
   }
 }
 
@@ -131,6 +142,8 @@ function withStructuredMeta<T extends z.ZodType>(schema: T, update: Partial<Stru
     normalizer: update.normalizer !== undefined ? update.normalizer : current.normalizer,
     isDynamic: update.isDynamic !== undefined ? update.isDynamic : current.isDynamic,
     dynamicFilter: update.dynamicFilter !== undefined ? update.dynamicFilter : current.dynamicFilter,
+    registryRules: update.registryRules !== undefined ? update.registryRules : current.registryRules,
+    _source: current._source ?? schema,
   }
 
   // Get existing Zod meta and merge with our structured meta
@@ -146,6 +159,7 @@ const ZodTypeProto = z.ZodType.prototype as z.ZodType & {
   alias(aliases: string[]): z.ZodType
   alternate<A>(schema: z.ZodType<A>, mapper: (value: A) => any): z.ZodType
   flexible(normalizer: (value: any) => any): z.ZodType
+  rules(text: string | string[]): z.ZodType
 }
 
 ZodTypeProto.alias = function (aliases: string[]) {
@@ -166,6 +180,10 @@ ZodTypeProto.flexible = function (normalizer: (value: any) => any) {
   return withStructuredMeta(this, { normalizer })
 }
 
+ZodTypeProto.rules = function (text: string | string[]) {
+  return withStructuredMeta(this, { registryRules: text })
+}
+
 /**
  * Get structured metadata from a Zod schema
  * Returns empty arrays for aliases/alternates if not set
@@ -181,6 +199,29 @@ export function getStructuredMeta<T>(schema: z.ZodType<T>): StructuredMeta<T> {
     isDynamic: meta.isDynamic,
     dynamicFilter: meta.dynamicFilter,
   }
+}
+
+/**
+ * Get registry-level description and rules from a schema.
+ * Description is read from Zod's native `.describe()` (i.e. `schema.description`).
+ * Rules are read from our structured metadata (set via `.rules()`).
+ */
+export function getRegistryMeta(schema: z.ZodType): { description?: string; rules?: string | string[] } {
+  const meta = getCurrentStructuredMeta(schema)
+  const result: { description?: string; rules?: string | string[] } = {}
+  if (schema.description) result.description = schema.description
+  if (meta.registryRules) result.rules = meta.registryRules
+  return result
+}
+
+/**
+ * Get the original source schema before alias/flexible wrapping.
+ * Returns undefined if the schema was never wrapped via .alias() or .flexible().
+ * @param schema - The Zod schema that may have been wrapped
+ * @returns The original source schema, or undefined
+ */
+export function getSourceSchema(schema: z.ZodType): z.ZodType | undefined {
+  return getCurrentStructuredMeta(schema)._source
 }
 
 /**
@@ -362,8 +403,9 @@ export function isDynamicSchema(schema: z.ZodType): boolean {
  * // Usage in ListWidget:
  * content: dynamic().array().optional()
  */
-export function dynamic(filter?: DynamicFilter): z.ZodAny {
-  const schema = z.any()
+export function dynamic<O extends z.ZodType<any> = z.ZodAny>(filter?: DynamicFilter): O {
+  const schema = z.any() as unknown as O
+
   return withStructuredMeta(schema, {
     isDynamic: true,
     dynamicFilter: filter,

@@ -1,6 +1,6 @@
 {
   "name": "@gumbee/structured",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A schema-aware progressive JSON parser that builds structured objects from streamed text",
   "author": "Gumbee <mugeeb.hassan@gmail.com>",
   "license": "MIT",
