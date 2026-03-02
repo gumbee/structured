@@ -101,7 +101,7 @@ declare module "zod" {
      * z.object({ type: z.literal('icon'), icon: z.string() })
      *   .alternate(z.string(), (v) => ({ type: 'icon', icon: v }))
      */
-    alternate<A>(schema: z.ZodType<A>, mapper: (value: A) => Output): this
+    alternate<S extends z.ZodType>(schema: S, mapper: (value: z.output<S>) => z.output<this>): this
 
     /**
      * Add a normalizer function for flexible value matching.

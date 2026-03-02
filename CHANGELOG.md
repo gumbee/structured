@@ -1,5 +1,11 @@
 # @gumbee/structured
 
+## 1.1.1
+
+### Patch Changes
+
+- fix type in alternate method
+
 ## 1.1.0
 
 ### Minor Changes
